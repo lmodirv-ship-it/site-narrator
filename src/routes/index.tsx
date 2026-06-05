@@ -90,7 +90,7 @@ function Index() {
           </div>
           <h1 className="text-2xl sm:text-4xl font-bold tracking-tight">
             <span className="bg-gradient-to-r from-brand via-brand-2 to-brand bg-clip-text text-transparent">
-              Site Movie Maker
+              Hn-MAKER
             </span>
           </h1>
           <p className="max-w-2xl mx-auto text-xs sm:text-sm text-muted-foreground">
