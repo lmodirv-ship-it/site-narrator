@@ -73,23 +73,23 @@ function Index() {
         <div className="absolute top-40 -right-32 h-96 w-96 rounded-full bg-brand-2/20 blur-3xl animate-float" style={{ animationDelay: "1s" }} />
       </div>
 
-      <div className="max-w-5xl mx-auto p-6 space-y-8">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8">
         {/* Hero */}
-        <header className="pt-8 text-center space-y-4">
-          <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-4 py-1.5 text-xs backdrop-blur">
-            <Sparkles className="h-3.5 w-3.5 text-brand" />
-            <span className="text-muted-foreground">مدعوم بـ ElevenLabs + Firecrawl + Gemini</span>
+        <header className="pt-4 sm:pt-8 text-center space-y-3 sm:space-y-4">
+          <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 sm:px-4 py-1.5 text-[11px] sm:text-xs backdrop-blur max-w-full">
+            <Sparkles className="h-3.5 w-3.5 text-brand shrink-0" />
+            <span className="text-muted-foreground truncate">مدعوم بـ ElevenLabs + Firecrawl + Gemini</span>
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight leading-tight">
             <span className="bg-gradient-to-r from-brand via-brand-2 to-brand bg-clip-text text-transparent">
               HN Tutorial Video Maker
             </span>
           </h1>
-          <p className="max-w-2xl mx-auto text-muted-foreground">
+          <p className="max-w-2xl mx-auto text-sm sm:text-base text-muted-foreground px-2">
             ضَع رابط أي موقع — نولّد لك فيديو شرح احترافي بصوت بشري ومؤشر فأرة متحرك،
             جاهز للتحميل بصيغة MP4 حتى 4K.
           </p>
-          <div className="flex flex-wrap items-center justify-center gap-3 pt-2 text-xs text-muted-foreground">
+          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 pt-2 text-[11px] sm:text-xs text-muted-foreground">
             <Badge icon={<Film className="h-3 w-3" />}>MP4 / 4K</Badge>
             <Badge icon={<Mic className="h-3 w-3" />}>صوت بشري</Badge>
             <Badge icon={<MousePointer2 className="h-3 w-3" />}>مؤشر متحرك</Badge>
@@ -100,8 +100,8 @@ function Index() {
         {/* Form card */}
         <Card className="relative overflow-hidden border-border/60 bg-card/70 backdrop-blur-xl shadow-xl">
           <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-brand to-transparent" />
-          <CardContent className="p-6">
-            <form onSubmit={onSubmit} className="grid gap-5 md:grid-cols-2">
+          <CardContent className="p-4 sm:p-6">
+            <form onSubmit={onSubmit} className="grid gap-4 sm:gap-5 md:grid-cols-2">
               <Field icon={<Globe className="h-4 w-4" />} label="رابط الموقع">
                 <Input
                   type="url"
@@ -152,11 +152,11 @@ function Index() {
                 </select>
               </Field>
 
-              <div className="md:col-span-2 flex flex-wrap items-center gap-4 pt-2">
+              <div className="md:col-span-2 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 sm:gap-4 pt-2">
                 <button
                   type="submit"
                   disabled={loading}
-                  className="group relative inline-flex h-12 items-center gap-2 overflow-hidden rounded-full btn-glow px-7 text-sm font-semibold disabled:opacity-60 disabled:cursor-not-allowed hover:-translate-y-0.5 hover:brightness-110 active:translate-y-0 transition"
+                  className="group relative inline-flex h-12 w-full sm:w-auto items-center justify-center gap-2 overflow-hidden rounded-full btn-glow px-6 sm:px-7 text-sm sm:text-base font-semibold disabled:opacity-60 disabled:cursor-not-allowed hover:-translate-y-0.5 hover:brightness-110 active:translate-y-0 transition"
                 >
                   {/* shimmer overlay */}
                   <span className="pointer-events-none absolute inset-0 -skew-x-12 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer" />
@@ -174,12 +174,12 @@ function Index() {
                 </button>
 
                 {stage && (
-                  <span className="inline-flex items-center gap-2 text-sm text-muted-foreground">
-                    <span className="relative inline-flex h-2 w-2">
+                  <span className="inline-flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+                    <span className="relative inline-flex h-2 w-2 shrink-0">
                       <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand opacity-75" />
                       <span className="relative inline-flex h-2 w-2 rounded-full bg-brand" />
                     </span>
-                    {stage}
+                    <span className="break-words">{stage}</span>
                   </span>
                 )}
               </div>
@@ -197,7 +197,7 @@ function Index() {
         {/* Result */}
         {result && (
           <Card className="border-border/60 bg-card/70 backdrop-blur-xl shadow-xl">
-            <CardContent className="p-6 space-y-4">
+            <CardContent className="p-4 sm:p-6 space-y-4">
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2">
                   <div className="h-9 w-9 rounded-lg btn-glow grid place-items-center">
