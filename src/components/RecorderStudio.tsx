@@ -693,18 +693,12 @@ export function RecorderStudio({
   }, [preloadAudio, scenes, animateCursor, secondsPerPage, voicePitch, voiceSpeed, voicePreset, startFromIndex, onSceneChange, siteName, finalizeDownloadFromChunks, setLastUrl, pickFolder]);
 
 
-  // Auto-start playback on mount (no screen-share prompt)
-  const startedRef = useRef(false);
+  // No auto-start: user must explicitly press the start button after
+  // choosing a folder. This avoids the recurring "video started without me
+  // picking a folder" confusion. Cleanup the stop flag on unmount only.
   useEffect(() => {
-    if (startedRef.current) return;
-    if (!dirHandle) {
-      setPhase("اختر مجلد الحفظ على الحاسوب لبدء إنشاء الفيديو.");
-      return;
-    }
-    startedRef.current = true;
-    void startPlayback();
     return () => { stopFlagRef.current = true; };
-  }, [dirHandle, startPlayback]);
+  }, []);
 
 
   return (
