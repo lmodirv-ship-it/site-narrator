@@ -392,7 +392,7 @@ export function RecorderStudio({
     } finally {
       setPlaying(false);
     }
-  }, [preloadAudio, scenes, animateCursor, secondsPerPage, voicePitch, voiceSpeed]);
+  }, [preloadAudio, scenes, animateCursor, secondsPerPage, voicePitch, voiceSpeed, startFromIndex, onSceneChange]);
 
   // Auto-start playback on mount (no screen-share prompt)
   const startedRef = useRef(false);
