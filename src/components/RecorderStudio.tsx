@@ -108,6 +108,7 @@ export function RecorderStudio({
   const [currentIdx, setCurrentIdx] = useState(0);
   const [iframeBlocked, setIframeBlocked] = useState(false);
   const [snapshotSaving, setSnapshotSaving] = useState(false);
+  const snapshotSavingRef = useRef(false);
 
   // Real memory controls (Chromium exposes performance.memory)
   const [memBudget, setMemBudget] = useState<number>(512); // MB target
