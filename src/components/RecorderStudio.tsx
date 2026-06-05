@@ -448,7 +448,7 @@ export function RecorderStudio({
         document.body.appendChild(a); a.click(); a.remove();
       }
       setConvProgress(100);
-      setConvPhase(`اكتمل التحويل ✓ MP4 (${formatDuration(Date.now() - (convStartAt ?? Date.now()))})`);
+      setConvPhase(`اكتمل التحويل ✓ MP4 (${formatDuration(Date.now() - convStarted)})`);
       setPhase(`${label} — ${saved ? "تم حفظ نسخة في المجلد" : "جاهز للتحميل"} ✓ MP4`);
     } catch (e) {
       console.error("ffmpeg failed", e);
