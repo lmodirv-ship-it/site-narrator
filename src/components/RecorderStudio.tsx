@@ -9,6 +9,8 @@ import {
 } from "lucide-react";
 import type { Scene } from "@/lib/tutorial.functions";
 import { synthesizeSpeech } from "@/lib/tts.functions";
+import { VOICE_PRESETS, type VoicePreset } from "@/lib/voices";
+import { usePersistentState } from "@/hooks/use-persistent-state";
 
 
 type Effect = "none" | "zoom" | "fade";
@@ -21,6 +23,7 @@ interface Props {
   secondsPerPage: number;
   voicePitch?: number;
   voiceSpeed?: number;
+  voiceId?: string;
   startFromIndex?: number;
   onSceneChange?: (idx: number) => void;
 }
@@ -34,11 +37,42 @@ type LogEntry = {
   status: "pending" | "active" | "done";
 };
 
+// Build a Web Audio EQ chain from a voice preset so that different presets
+// actually sound different even though Google TTS only ships one base voice per language.
+function buildVoiceChain(audioCtx: AudioContext, preset: VoicePreset | undefined) {
+  const input = audioCtx.createGain();
+  let node: AudioNode = input;
+  if (preset?.highpass) {
+    const hp = audioCtx.createBiquadFilter();
+    hp.type = "highpass"; hp.frequency.value = preset.highpass; hp.Q.value = 0.7;
+    node.connect(hp); node = hp;
+  }
+  if (preset?.lowpass) {
+    const lp = audioCtx.createBiquadFilter();
+    lp.type = "lowpass"; lp.frequency.value = preset.lowpass; lp.Q.value = 0.7;
+    node.connect(lp); node = lp;
+  }
+  if (preset?.peakFreq && preset?.peakGain) {
+    const pk = audioCtx.createBiquadFilter();
+    pk.type = "peaking";
+    pk.frequency.value = preset.peakFreq;
+    pk.gain.value = preset.peakGain;
+    pk.Q.value = preset.peakQ ?? 1;
+    node.connect(pk); node = pk;
+  }
+  const out = audioCtx.createGain();
+  out.gain.value = 1.05;
+  node.connect(out);
+  return { input, output: out };
+}
+
 export function RecorderStudio({
   scenes, language, siteName, effect, secondsPerPage,
-  voicePitch = 0, voiceSpeed = 1,
+  voicePitch = 0, voiceSpeed = 1, voiceId,
   startFromIndex = 0, onSceneChange,
 }: Props) {
+  const voicePreset = VOICE_PRESETS.find((v) => v.id === voiceId);
+  const [lastUrl, setLastUrl] = usePersistentState<string>("hn:lastIframeUrl", scenes[startFromIndex]?.pageUrl ?? scenes[0]?.pageUrl ?? "");
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -173,12 +207,13 @@ export function RecorderStudio({
 
   const synthesize = useServerFn(synthesizeSpeech);
 
-  // Load first page in iframe on mount
+  // Load the last viewed page (persisted), falling back to the resume scene or first scene.
   useEffect(() => {
-    if (iframeRef.current && scenes[0]) {
-      iframeRef.current.src = scenes[0].pageUrl;
-    }
-  }, [scenes]);
+    if (!iframeRef.current) return;
+    const initial = lastUrl || scenes[startFromIndex]?.pageUrl || scenes[0]?.pageUrl;
+    if (initial) iframeRef.current.src = initial;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Detect iframe blocking (best effort)
   useEffect(() => {
@@ -653,6 +688,7 @@ export function RecorderStudio({
 
         if (iframeRef.current && (i > 0 || iframeRef.current.src !== scene.pageUrl)) {
           iframeRef.current.src = scene.pageUrl;
+          setLastUrl(scene.pageUrl);
           await new Promise<void>((resolve) => {
             const f = iframeRef.current!;
             let done = false;
@@ -660,6 +696,8 @@ export function RecorderStudio({
             f.addEventListener("load", onLoad, { once: true });
             setTimeout(() => { if (!done) { done = true; resolve(); } }, 4500);
           });
+        } else {
+          setLastUrl(scene.pageUrl);
         }
         await new Promise((r) => setTimeout(r, 300));
 
@@ -673,8 +711,11 @@ export function RecorderStudio({
           src.buffer = buf;
           try { src.detune.value = voicePitch * 100; } catch { /* unsupported */ }
           src.playbackRate.value = voiceSpeed;
-          src.connect(audioCtx.destination);
-          src.connect(audioDest);
+          // Voice coloring chain — per-preset EQ so timbre actually changes.
+          const chain = buildVoiceChain(audioCtx, voicePreset);
+          src.connect(chain.input);
+          chain.output.connect(audioCtx.destination);
+          chain.output.connect(audioDest);
           src.start();
         }
         const targets = scene.cursorTargets.length ? scene.cursorTargets : [{ x: 50, y: 50, label: "" }];
@@ -698,7 +739,7 @@ export function RecorderStudio({
       drawingRef.current = false;
       setPlaying(false);
     }
-  }, [preloadAudio, scenes, animateCursor, secondsPerPage, voicePitch, voiceSpeed, startFromIndex, onSceneChange, siteName, finalizeDownloadFromChunks]);
+  }, [preloadAudio, scenes, animateCursor, secondsPerPage, voicePitch, voiceSpeed, voicePreset, startFromIndex, onSceneChange, siteName, finalizeDownloadFromChunks, setLastUrl]);
 
 
   // Auto-start playback on mount (no screen-share prompt)
@@ -944,6 +985,11 @@ export function RecorderStudio({
             {logs.map((l) => (
               <li
                 key={l.idx}
+                ref={(el) => {
+                  if (el && l.status === "active") {
+                    el.scrollIntoView({ behavior: "smooth", block: "center" });
+                  }
+                }}
                 className={`rounded-lg border p-2.5 transition ${
                   l.status === "active"
                     ? "border-brand bg-brand/10 shadow-lg shadow-brand/20"

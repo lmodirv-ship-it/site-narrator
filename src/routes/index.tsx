@@ -370,6 +370,7 @@ function Index() {
                 effect={effect}
                 secondsPerPage={secondsPerPage}
                 voicePitch={pitch}
+                voiceId={voiceId}
                 voiceSpeed={speed}
                 startFromIndex={resumeFrom}
                 onSceneChange={(i) => setResumeFrom(i)}
