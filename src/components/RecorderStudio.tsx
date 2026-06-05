@@ -331,7 +331,6 @@ export function RecorderStudio({
   );
 
 
-  const startRecording = useCallback(async () => {
     setError(null);
     setDownloadUrl(null);
     setPreparing(true);
