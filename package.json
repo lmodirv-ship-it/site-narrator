@@ -14,7 +14,11 @@
     "electron": "electron electron/main.cjs",
     "electron:linux": "electron-packager . Hn-MAKER --platform=linux --arch=x64 --out=electron-release --overwrite --extra-resource=local-server --ignore=^/src --ignore=^/public --ignore=^/electron-release --ignore=^/local-server",
     "electron:win": "electron-packager . Hn-MAKER --platform=win32 --arch=x64 --out=electron-release --overwrite --extra-resource=local-server --ignore=^/src --ignore=^/public --ignore=^/electron-release --ignore=^/local-server",
-    "electron:mac": "electron-packager . Hn-MAKER --platform=darwin --arch=arm64 --out=electron-release --overwrite --extra-resource=local-server --ignore=^/src --ignore=^/public --ignore=^/electron-release --ignore=^/local-server"
+    "electron:mac": "electron-packager . Hn-MAKER --platform=darwin --arch=arm64 --out=electron-release --overwrite --extra-resource=local-server --ignore=^/src --ignore=^/public --ignore=^/electron-release --ignore=^/local-server",
+    "android:init": "npm install @capacitor/core @capacitor/android && npm install --save-dev @capacitor/cli && npx cap add android",
+    "android:sync": "npm run build && npx cap sync android",
+    "android:open": "npx cap open android",
+    "android:build": "npm run android:sync && cd android && ./gradlew assembleDebug"
   },
   "dependencies": {
     "@ffmpeg/ffmpeg": "^0.12.15",
