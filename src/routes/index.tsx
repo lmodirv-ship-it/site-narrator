@@ -42,6 +42,7 @@ function pagesToLevel(n: number): Level {
 
 function Index() {
   const generate = useServerFn(generateTutorial);
+  const ttsSynth = useServerFn(synthesizeSpeech);
   const [url, setUrl] = usePersistentState("hn:url", "https://lovable.dev");
   const [siteName, setSiteName] = usePersistentState("hn:siteName", "Lovable");
   const [pages, setPages] = usePersistentState<number>("hn:pages", 20);
