@@ -74,7 +74,11 @@ export function RecorderStudio({
   const [memUsed, setMemUsed] = useState<number>(0);
   const [memLimit, setMemLimit] = useState<number>(0);
   const [dirHandle, setDirHandle] = useState<FileSystemDirectoryHandle | null>(null);
+  const [resolution, setResolution] = useState<480 | 720 | 1080 | 1440>(1080);
+  const resolutionRef = useRef(resolution);
+  useEffect(() => { resolutionRef.current = resolution; }, [resolution]);
   const memBudgetRef = useRef(memBudget);
+
   useEffect(() => { memBudgetRef.current = memBudget; }, [memBudget]);
 
   useEffect(() => {
