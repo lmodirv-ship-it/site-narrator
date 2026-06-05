@@ -154,25 +154,28 @@ export function RecorderStudio({
       const inIframe = window.self !== window.top;
       if (!picker) {
         setError("متصفحك لا يدعم اختيار مجلد محلي. استخدم Chrome / Edge على الحاسوب.");
-        return;
+        return false;
       }
       if (inIframe) {
         const openUrl = window.location.href;
         setError(`اختيار المجلد محظور داخل معاينة Lovable. افتح التطبيق في تبويب مستقل ثم اضغط الزر مرة أخرى: ${openUrl}`);
         try { window.open(openUrl, "_blank", "noopener"); } catch { /* noop */ }
-        return;
+        return false;
       }
       const h = await picker({ mode: "readwrite" });
       setDirHandle(h);
+      dirHandleRef.current = h;
       setError(null);
+      return true;
     } catch (e) {
       const name = (e as { name?: string })?.name;
-      if (name === "AbortError") return;
+      if (name === "AbortError") return false;
       if (name === "SecurityError") {
         setError("اختيار المجلد محظور هنا (سياسة أمان). افتح التطبيق في تبويب مستقل.");
       } else {
         setError("تعذّر فتح المجلد: " + ((e as Error)?.message ?? "خطأ غير معروف"));
       }
+      return false;
     }
   }, []);
 
