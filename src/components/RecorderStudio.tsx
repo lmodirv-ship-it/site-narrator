@@ -17,8 +17,10 @@ interface Props {
   siteName: string;
   effect: Effect;
   secondsPerPage: number;
-  voicePitch?: number;  // semitones, applied via detune (cents)
-  voiceSpeed?: number;  // playbackRate multiplier
+  voicePitch?: number;
+  voiceSpeed?: number;
+  startFromIndex?: number;
+  onSceneChange?: (idx: number) => void;
 }
 
 type LogEntry = {
@@ -33,7 +35,9 @@ type LogEntry = {
 export function RecorderStudio({
   scenes, language, siteName, effect, secondsPerPage,
   voicePitch = 0, voiceSpeed = 1,
+  startFromIndex = 0, onSceneChange,
 }: Props) {
+
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const cursorRef = useRef<HTMLDivElement>(null);
