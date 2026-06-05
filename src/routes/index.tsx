@@ -40,22 +40,28 @@ function pagesToLevel(n: number): Level {
 
 function Index() {
   const generate = useServerFn(generateTutorial);
-  const [url, setUrl] = useState("https://lovable.dev");
-  const [siteName, setSiteName] = useState("Lovable");
-  const [pages, setPages] = useState<number>(20);
-  const [quality, setQuality] = useState<Quality>("1080");
-  const [language, setLanguage] = useState("ar");
-  const [voiceId, setVoiceId] = useState<string>(VOICE_PRESETS[0].id);
-  const [pitch, setPitch] = useState<number>(0);
-  const [speed, setSpeed] = useState<number>(1);
-  const [effect, setEffect] = useState<Effect>("none");
-  const [secondsPerPage, setSecondsPerPage] = useState(8);
+  const [url, setUrl] = usePersistentState("hn:url", "https://lovable.dev");
+  const [siteName, setSiteName] = usePersistentState("hn:siteName", "Lovable");
+  const [pages, setPages] = usePersistentState<number>("hn:pages", 20);
+  const [quality, setQuality] = usePersistentState<Quality>("hn:quality", "1080");
+  const [language, setLanguage] = usePersistentState("hn:language", "ar");
+  const [voiceId, setVoiceId] = usePersistentState<string>("hn:voiceId", VOICE_PRESETS[0].id);
+  const [pitch, setPitch] = usePersistentState<number>("hn:pitch", 0);
+  const [speed, setSpeed] = usePersistentState<number>("hn:speed", 1);
+  const [effect, setEffect] = usePersistentState<Effect>("hn:effect", "none");
+  const [secondsPerPage, setSecondsPerPage] = usePersistentState<number>("hn:spp", 8);
   const voicePreset = VOICE_PRESETS.find((v) => v.id === voiceId) ?? VOICE_PRESETS[0];
 
   const [stage, setStage] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<GenerateResult | null>(null);
+  const [result, setResult, clearResult] = usePersistentState<GenerateResult | null>("hn:result", null);
+  const [resumeFrom, setResumeFrom, clearResumeFrom] = usePersistentState<number>("hn:resumeFrom", 0);
+  const [pendingJob, setPendingJob, clearPendingJob] = usePersistentState<{
+    url: string; siteName: string; language: string; pages: number; startedAt: number;
+  } | null>("hn:pendingJob", null);
+  const [resumedBanner, setResumedBanner] = useState(false);
+
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
