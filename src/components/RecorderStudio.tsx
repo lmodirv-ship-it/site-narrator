@@ -533,14 +533,9 @@ export function RecorderStudio({
             <Square className="h-4 w-4" /> إيقاف التشغيل
           </Button>
         ) : !recording && !preparing ? (
-          <>
-            <Button onClick={startPlayback} className="gap-2" variant="secondary">
-              <Play className="h-4 w-4" /> إعادة التشغيل
-            </Button>
-            <Button onClick={startRecording} className="gap-2">
-              <FileVideo className="h-4 w-4" /> تسجيل MP4 (يطلب مشاركة التبويب)
-            </Button>
-          </>
+          <Button onClick={startPlayback} className="gap-2" variant="secondary">
+            <Play className="h-4 w-4" /> إعادة التشغيل
+          </Button>
         ) : (
           <Button variant="destructive" onClick={stop} className="gap-2">
             <Square className="h-4 w-4" /> إيقاف
