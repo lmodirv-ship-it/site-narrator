@@ -321,8 +321,83 @@ export function RecorderStudio({
     stopFlagRef.current = true;
     try { recorderRef.current?.stop(); } catch { /* noop */ }
     setRecording(false);
+    setPlaying(false);
     setPhase("تم الإيقاف");
   }, []);
+
+  // Playback without screen-share: navigates iframe, animates cursor, plays TTS audio.
+  const startPlayback = useCallback(async () => {
+    setError(null);
+    setPlaying(true);
+    stopFlagRef.current = false;
+    try {
+      const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const audioCtx = new AC();
+      await audioCtx.resume();
+      audioCtxRef.current = audioCtx;
+
+      await preloadAudio(audioCtx);
+      if (stopFlagRef.current) { setPlaying(false); return; }
+
+      setPhase("جارٍ التشغيل…");
+      for (let i = 0; i < scenes.length; i++) {
+        if (stopFlagRef.current) break;
+        const scene = scenes[i];
+        setCurrentIdx(i);
+        setLogStatus(i, "active");
+        setProgress(30 + (i / scenes.length) * 70);
+
+        if (iframeRef.current && (i > 0 || iframeRef.current.src !== scene.pageUrl)) {
+          iframeRef.current.src = scene.pageUrl;
+          await new Promise<void>((resolve) => {
+            const f = iframeRef.current!;
+            let done = false;
+            const onLoad = () => { if (!done) { done = true; resolve(); } };
+            f.addEventListener("load", onLoad, { once: true });
+            setTimeout(() => { if (!done) { done = true; resolve(); } }, 4500);
+          });
+        }
+        await new Promise((r) => setTimeout(r, 300));
+
+        const buf = audioBuffersRef.current.get(i);
+        const narrationSec = buf ? buf.duration : Math.max(secondsPerPage, scene.narration.split(/\s+/).length * 0.38);
+        const durationSec = Math.max(secondsPerPage, narrationSec + 0.4);
+
+        let src: AudioBufferSourceNode | null = null;
+        if (buf) {
+          src = audioCtx.createBufferSource();
+          src.buffer = buf;
+          try { src.detune.value = voicePitch * 100; } catch { /* unsupported */ }
+          src.playbackRate.value = voiceSpeed;
+          src.connect(audioCtx.destination);
+          src.start();
+        }
+        const targets = scene.cursorTargets.length ? scene.cursorTargets : [{ x: 50, y: 50, label: "" }];
+        await animateCursor(targets, durationSec * 1000);
+        try { src?.stop(); } catch { /* noop */ }
+        setLogStatus(i, "done");
+      }
+      audioCtx.close();
+      setPhase("اكتمل التشغيل ✓");
+      setProgress(100);
+    } catch (e) {
+      console.error(e);
+      setError(e instanceof Error ? e.message : "خطأ غير معروف");
+    } finally {
+      setPlaying(false);
+    }
+  }, [preloadAudio, scenes, animateCursor, secondsPerPage, voicePitch, voiceSpeed]);
+
+  // Auto-start playback on mount (no screen-share prompt)
+  const startedRef = useRef(false);
+  useEffect(() => {
+    if (startedRef.current) return;
+    startedRef.current = true;
+    void startPlayback();
+    return () => { stopFlagRef.current = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
 
   return (
     <div className="space-y-4">
