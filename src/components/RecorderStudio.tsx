@@ -243,6 +243,8 @@ export function RecorderStudio({
         if (buf) {
           src = audioCtx.createBufferSource();
           src.buffer = buf;
+          try { src.detune.value = voicePitch * 100; } catch { /* unsupported */ }
+          src.playbackRate.value = voiceSpeed;
           src.connect(audioDest);
           src.connect(audioCtx.destination);
           src.start();
