@@ -172,7 +172,7 @@ export function RecorderStudio({
     document.body.appendChild(a);
     a.click();
     a.remove();
-  }, [downloadUrl, downloadName]);
+  }, [downloadUrl, downloadName, dirHandle]);
 
   const setLogStatus = (idx: number, status: LogEntry["status"]) => {
     setLogs((prev) => prev.map((l) => (l.idx === idx ? { ...l, status } : l)));
