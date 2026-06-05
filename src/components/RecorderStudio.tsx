@@ -818,6 +818,7 @@ export function RecorderStudio({
     } finally {
       drawingRef.current = false;
       setPlaying(false);
+      setRecStartAt(null);
       if (liveWritable) {
         try { await liveWritable.close(); } catch { /* noop */ }
         liveWritable = null;
