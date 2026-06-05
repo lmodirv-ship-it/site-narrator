@@ -637,6 +637,21 @@ export function RecorderStudio({
     setPlaying(true);
     stopFlagRef.current = false;
     recChunksRef.current = [];
+
+    // Open a live writable stream in the chosen folder so the .webm grows in real time
+    // while recording — the user sees a file appearing immediately after pressing Start.
+    let liveWritable: FileSystemWritableFileStream | null = null;
+    const liveWebmName = `${siteName}-live.webm`;
+    try {
+      const folder = dirHandleRef.current!;
+      const fh = await folder.getFileHandle(liveWebmName, { create: true });
+      liveWritable = await fh.createWritable();
+      setPhase(`بدأ التسجيل المباشر في الملف: ${liveWebmName}`);
+    } catch (e) {
+      console.warn("live writable failed, falling back to in-memory buffering", e);
+      liveWritable = null;
+    }
+
     try {
       const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       const audioCtx = new AC();
@@ -663,9 +678,21 @@ export function RecorderStudio({
       recMimeRef.current = mime;
       const rec = new MediaRecorder(combined, { mimeType: mime, videoBitsPerSecond: 4_000_000, audioBitsPerSecond: 128_000 });
       recorderRef.current = rec;
-      rec.ondataavailable = (e) => { if (e.data.size > 0) recChunksRef.current.push(e.data); };
+      // Serialize disk writes so chunks land in order even if they arrive in bursts.
+      let writeQueue: Promise<void> = Promise.resolve();
+      rec.ondataavailable = (e) => {
+        if (e.data.size <= 0) return;
+        recChunksRef.current.push(e.data);
+        if (liveWritable) {
+          const chunk = e.data;
+          writeQueue = writeQueue.then(() => liveWritable!.write(chunk)).catch((err) => {
+            console.warn("live chunk write failed", err);
+          });
+        }
+      };
       const stopped = new Promise<void>((res) => { rec.onstop = () => res(); });
-      rec.start(1000);
+      // Smaller timeslice = file grows on disk every ~500ms.
+      rec.start(500);
 
       // Draw loop — slideshow of current scene
       drawingRef.current = true;
@@ -760,8 +787,14 @@ export function RecorderStudio({
       drawingRef.current = false;
       try { if (rec.state !== "inactive") rec.stop(); } catch { /* noop */ }
       await stopped;
+      // Flush pending live writes and close the on-disk webm file.
+      try { await writeQueue; } catch { /* noop */ }
+      if (liveWritable) {
+        try { await liveWritable.close(); } catch (err) { console.warn("close live writable failed", err); }
+        liveWritable = null;
+      }
       audioCtx.close();
-      setPhase("اكتمل التشغيل — تجهيز الملف…");
+      setPhase("اكتمل التشغيل — تجهيز نسخة MP4…");
       setProgress(95);
       await finalizeDownloadFromChunks("اكتمل");
       setProgress(100);
@@ -771,6 +804,10 @@ export function RecorderStudio({
     } finally {
       drawingRef.current = false;
       setPlaying(false);
+      if (liveWritable) {
+        try { await liveWritable.close(); } catch { /* noop */ }
+        liveWritable = null;
+      }
     }
   }, [preloadAudio, scenes, animateCursor, secondsPerPage, voicePitch, voiceSpeed, voicePreset, startFromIndex, onSceneChange, siteName, finalizeDownloadFromChunks, setLastUrl, pickFolder]);
 
