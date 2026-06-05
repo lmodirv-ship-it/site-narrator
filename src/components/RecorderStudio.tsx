@@ -176,9 +176,10 @@ export function RecorderStudio({
   }, []);
 
   const saveToFolder = useCallback(async (videoBlob: Blob, name: string) => {
-    if (!dirHandle) return;
+    const folder = dirHandleRef.current;
+    if (!folder) return false;
     try {
-      const fh = await dirHandle.getFileHandle(name, { create: true });
+      const fh = await folder.getFileHandle(name, { create: true });
       const w = await fh.createWritable();
       await w.write(videoBlob);
       await w.close();
@@ -196,15 +197,17 @@ export function RecorderStudio({
         `— المشاهد —`,
         ...scenes.map((s, i) => `${i + 1}. ${s.pageTitle}\n   ${s.pageUrl}\n   ${s.narration}\n`),
       ].join("\n");
-      const ih = await dirHandle.getFileHandle(infoName, { create: true });
+      const ih = await folder.getFileHandle(infoName, { create: true });
       const iw = await ih.createWritable();
       await iw.write(new Blob([info], { type: "text/plain;charset=utf-8" }));
       await iw.close();
+      return true;
     } catch (e) {
       console.error("save to folder failed", e);
       setError("تعذّر الحفظ في المجلد المحدد");
+      return false;
     }
-  }, [dirHandle, scenes, siteName, language]);
+  }, [scenes, siteName, language]);
 
 
 
