@@ -14,7 +14,7 @@ import { MY_LOVABLE_PROJECTS } from "@/lib/my-projects";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Site Movie Maker — فيديو شرح حقيقي لأي موقع" },
+      { title: "Hn-MAKER — فيديو شرح حقيقي لأي موقع" },
       { name: "description", content: "تسجيل شاشة حقيقي لأي موقع مع مؤشر متحرك وصوت شرح — MP4 جاهز للتحميل." },
     ],
   }),
