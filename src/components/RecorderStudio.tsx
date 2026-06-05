@@ -374,7 +374,7 @@ export function RecorderStudio({
       // If user stops sharing from browser UI
       displayStream.getVideoTracks()[0].addEventListener("ended", () => {
         stopFlagRef.current = true;
-        try { rec.state !== "inactive" && rec.stop(); } catch { /* noop */ }
+        try { if (rec.state !== "inactive") rec.stop(); } catch { /* noop */ }
       });
 
       setPreparing(false);
@@ -432,7 +432,7 @@ export function RecorderStudio({
       }
 
       setPhase("إنهاء التسجيل…");
-      try { rec.state !== "inactive" && rec.stop(); } catch { /* noop */ }
+      try { if (rec.state !== "inactive") rec.stop(); } catch { /* noop */ }
       displayStream.getTracks().forEach((t) => t.stop());
       await stopped;
       audioCtx.close();
