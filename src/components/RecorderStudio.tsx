@@ -261,8 +261,11 @@ export function RecorderStudio({
 
       // 2) Ask user to share this tab
       setPhase("اختر هذا التبويب لمشاركته (Chrome → This Tab) ثم اضغط مشاركة");
+      const targetH = resolutionRef.current;
+      const targetW = Math.round((targetH * 16) / 9);
       const displayStream = await navigator.mediaDevices.getDisplayMedia({
-        video: { frameRate: 30 } as MediaTrackConstraints,
+        video: { frameRate: 30, width: { ideal: targetW }, height: { ideal: targetH } } as MediaTrackConstraints,
+
         audio: false,
       });
 
