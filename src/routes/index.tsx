@@ -63,18 +63,16 @@ function Index() {
   const [resumedBanner, setResumedBanner] = useState(false);
 
 
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const runGeneration = async (u: string, name: string, lang: string, p: number) => {
     setError(null);
     setResult(null);
+    setResumeFrom(0);
     setLoading(true);
     setStage("جارٍ تحليل الموقع والتقاط الصفحات…");
+    setPendingJob({ url: u, siteName: name, language: lang, pages: p, startedAt: Date.now() });
     try {
-      const r = await generate({
-        data: { url, siteName, language, level: pagesToLevel(pages) },
-      });
-      // trim to user-requested page count
-      const limit = pages >= 9999 ? r.scenes.length : pages;
+      const r = await generate({ data: { url: u, siteName: name, language: lang, level: pagesToLevel(p) } });
+      const limit = p >= 9999 ? r.scenes.length : p;
       const trimmed: GenerateResult = {
         ...r,
         scenes: r.scenes.slice(0, limit),
@@ -87,9 +85,39 @@ function Index() {
       setStage("");
     } finally {
       setLoading(false);
+      clearPendingJob();
     }
-    void quality; // forwarded for future use
+    void quality;
   };
+
+  const onSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    void runGeneration(url, siteName, language, pages);
+  };
+
+  // Auto-resume: if the tab was closed mid-analysis, re-run with saved inputs.
+  // If a result is already cached with a non-zero resumeFrom, show a banner.
+  useEffect(() => {
+    if (pendingJob && !result && !loading) {
+      setResumedBanner(true);
+      void runGeneration(pendingJob.url, pendingJob.siteName, pendingJob.language, pendingJob.pages);
+    } else if (result && resumeFrom > 0) {
+      setResumedBanner(true);
+    }
+    // run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const resetSession = () => {
+    clearResult();
+    clearResumeFrom();
+    clearPendingJob();
+    setResult(null);
+    setResumeFrom(0);
+    setStage("");
+    setResumedBanner(false);
+  };
+
 
   return (
     <div dir="rtl" className="min-h-screen text-foreground">
