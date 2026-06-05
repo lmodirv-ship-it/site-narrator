@@ -107,15 +107,18 @@ export function RecorderStudio({
   const [error, setError] = useState<string | null>(null);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [iframeBlocked, setIframeBlocked] = useState(false);
+  const [snapshotSaving, setSnapshotSaving] = useState(false);
 
   // Real memory controls (Chromium exposes performance.memory)
   const [memBudget, setMemBudget] = useState<number>(512); // MB target
   const [memUsed, setMemUsed] = useState<number>(0);
   const [memLimit, setMemLimit] = useState<number>(0);
   const [dirHandle, setDirHandle] = useState<FileSystemDirectoryHandle | null>(null);
+  const dirHandleRef = useRef<FileSystemDirectoryHandle | null>(null);
   const [resolution, setResolution] = useState<480 | 720 | 1080 | 1440>(1080);
   const resolutionRef = useRef(resolution);
   useEffect(() => { resolutionRef.current = resolution; }, [resolution]);
+  useEffect(() => { dirHandleRef.current = dirHandle; }, [dirHandle]);
   // Encoding settings
   const [codec, setCodec] = useState<"libx264" | "libx265">("libx264");
   const [crf, setCrf] = useState<number>(20);
