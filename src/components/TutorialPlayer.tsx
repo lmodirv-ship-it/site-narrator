@@ -346,7 +346,9 @@ export function TutorialPlayer({ scenes, language, siteName }: Props) {
           "out.mp4",
         ]);
         const out = await ffmpeg.readFile("out.mp4");
-        const mp4Blob = new Blob([out as Uint8Array], { type: "video/mp4" });
+        const outBytes = out as Uint8Array;
+        const ab = outBytes.buffer.slice(outBytes.byteOffset, outBytes.byteOffset + outBytes.byteLength) as ArrayBuffer;
+        const mp4Blob = new Blob([ab], { type: "video/mp4" });
         const url = URL.createObjectURL(mp4Blob);
         setDownloadUrl(url);
         setDownloadName(`${siteName}-tutorial.mp4`);
