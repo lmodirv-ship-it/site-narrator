@@ -77,6 +77,17 @@ export function RecorderStudio({
   const [resolution, setResolution] = useState<480 | 720 | 1080 | 1440>(1080);
   const resolutionRef = useRef(resolution);
   useEffect(() => { resolutionRef.current = resolution; }, [resolution]);
+  // Encoding settings
+  const [codec, setCodec] = useState<"libx264" | "libx265">("libx264");
+  const [crf, setCrf] = useState<number>(20);
+  const [bitrateK, setBitrateK] = useState<number>(0); // 0 = auto (CRF-driven)
+  const codecRef = useRef(codec);
+  const crfRef = useRef(crf);
+  const bitrateRef = useRef(bitrateK);
+  useEffect(() => { codecRef.current = codec; }, [codec]);
+  useEffect(() => { crfRef.current = crf; }, [crf]);
+  useEffect(() => { bitrateRef.current = bitrateK; }, [bitrateK]);
+
   const memBudgetRef = useRef(memBudget);
 
   useEffect(() => { memBudgetRef.current = memBudget; }, [memBudget]);
