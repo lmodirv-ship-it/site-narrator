@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { RecorderStudio } from "@/components/RecorderStudio";
 import { generateTutorial, type GenerateResult } from "@/lib/tutorial.functions";
+import { MY_LOVABLE_PROJECTS } from "@/lib/my-projects";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -102,6 +103,21 @@ function Index() {
         <Card className="border-border/60 bg-card/70 backdrop-blur-xl shadow-xl">
           <CardContent className="p-4 sm:p-6">
             <form onSubmit={onSubmit} className="grid gap-4 md:grid-cols-3">
+              <Field icon={<Sparkles className="h-4 w-4" />} label="اختر من مشاريعي">
+                <select
+                  className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+                  value=""
+                  onChange={(e) => {
+                    const p = MY_LOVABLE_PROJECTS.find((x) => x.url === e.target.value);
+                    if (p) { setUrl(p.url); setSiteName(p.name); }
+                  }}
+                >
+                  <option value="">— مشاريعي على Lovable ({MY_LOVABLE_PROJECTS.length}) —</option>
+                  {MY_LOVABLE_PROJECTS.map((p) => (
+                    <option key={p.url} value={p.url}>{p.name}</option>
+                  ))}
+                </select>
+              </Field>
               <Field icon={<Globe className="h-4 w-4" />} label="رابط الموقع">
                 <Input type="url" required value={url} onChange={(e) => setUrl(e.target.value)} dir="ltr" className="h-10" placeholder="https://example.com" />
               </Field>
