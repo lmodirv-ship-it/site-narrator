@@ -115,6 +115,11 @@ export function RecorderStudio({
   const [recBytes, setRecBytes] = useState(0);
   const [recChunks, setRecChunks] = useState(0);
   const [liveFileName, setLiveFileName] = useState<string | null>(null);
+  useEffect(() => {
+    if (recStartAt === null) return;
+    const id = window.setInterval(() => setRecElapsedMs(Date.now() - recStartAt), 250);
+    return () => window.clearInterval(id);
+  }, [recStartAt]);
 
   // Real memory controls (Chromium exposes performance.memory)
   const [memBudget, setMemBudget] = useState<number>(512); // MB target
