@@ -530,8 +530,11 @@ export function RecorderStudio({
 
   // Build a downloadable blob from whatever has been captured so far (and convert to MP4 best-effort).
   const finalizeDownloadFromChunks = useCallback(async (label: string) => {
+    if (snapshotSavingRef.current) return;
     const chunks = recChunksRef.current;
     if (!chunks.length) return;
+    snapshotSavingRef.current = true;
+    setSnapshotSaving(true);
     const webmBlob = new Blob(chunks, { type: recMimeRef.current });
     const baseName = `${siteName}-tutorial`;
     // Try MP4 conversion; fall back to WebM if it fails.
@@ -563,19 +566,22 @@ export function RecorderStudio({
       const ab = out.buffer.slice(out.byteOffset, out.byteOffset + out.byteLength) as ArrayBuffer;
       const mp4Blob = new Blob([ab], { type: "video/mp4" });
       const name = `${baseName}.mp4`;
-      await saveToFolder(mp4Blob, name);
+      const saved = await saveToFolder(mp4Blob, name);
       if (downloadUrl) URL.revokeObjectURL(downloadUrl);
       setDownloadUrl(URL.createObjectURL(mp4Blob));
       setDownloadName(name);
-      setPhase(`${label} — جاهز ✓ MP4`);
+      setPhase(`${label} — ${saved ? "تم حفظ نسخة في المجلد" : "جاهز للتحميل"} ✓ MP4`);
     } catch (e) {
       console.error("ffmpeg failed", e);
       const name = `${baseName}.webm`;
-      await saveToFolder(webmBlob, name);
+      const saved = await saveToFolder(webmBlob, name);
       if (downloadUrl) URL.revokeObjectURL(downloadUrl);
       setDownloadUrl(URL.createObjectURL(webmBlob));
       setDownloadName(name);
-      setPhase(`${label} — جاهز ✓ WebM`);
+      setPhase(`${label} — ${saved ? "تم حفظ نسخة في المجلد" : "جاهز للتحميل"} ✓ WebM`);
+    } finally {
+      snapshotSavingRef.current = false;
+      setSnapshotSaving(false);
     }
   }, [siteName, saveToFolder, downloadUrl]);
 
