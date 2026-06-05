@@ -87,15 +87,13 @@ function Index() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
-        <header className="pt-2 text-center space-y-2">
-          <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1 text-[11px] sm:text-xs backdrop-blur">
-            <Sparkles className="h-3.5 w-3.5 text-brand" />
+        <header className="pt-2 text-center space-y-3 animate-rise">
+          <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1 text-[11px] sm:text-xs backdrop-blur animate-pulse-ring">
+            <Sparkles className="h-3.5 w-3.5 text-brand animate-flicker" />
             <span className="text-muted-foreground">تسجيل شاشة حقيقي · صوت شرح · MP4</span>
           </div>
-          <h1 className="text-2xl sm:text-4xl font-bold tracking-tight">
-            <span className="bg-gradient-to-r from-brand via-brand-2 to-brand bg-clip-text text-transparent">
-              Hn-MAKER
-            </span>
+          <h1 className="text-4xl sm:text-6xl font-black tracking-tight">
+            <span className="neon-text animate-flicker">Hn-MAKER</span>
           </h1>
           <p className="max-w-2xl mx-auto text-xs sm:text-sm text-muted-foreground">
             ضع الرابط، اختر الإعدادات، ثم ابدأ التسجيل — يتنقل النظام داخل الموقع الحقيقي
@@ -105,7 +103,8 @@ function Index() {
 
         {/* Form — hidden once generation completes */}
         {!result && (
-        <Card className="border-border/60 bg-card/70 backdrop-blur-xl shadow-xl">
+        <Card className="neon-card border-0 shadow-xl animate-rise" style={{ animationDelay: ".15s" }}>
+
           <CardContent className="p-4 sm:p-6">
             <form onSubmit={onSubmit} className="grid gap-4 md:grid-cols-3">
               <Field icon={<Sparkles className="h-4 w-4" />} label="اختر من مشاريعي">
@@ -224,7 +223,7 @@ function Index() {
 
         {/* Studio */}
         {result && (
-          <Card className="border-border/60 bg-card/70 backdrop-blur-xl shadow-xl">
+          <Card className="neon-card border-0 shadow-xl animate-rise">
             <CardContent className="p-4 sm:p-6">
               <div className="flex items-center gap-2 mb-4">
                 <div className="h-9 w-9 rounded-lg btn-glow grid place-items-center">
