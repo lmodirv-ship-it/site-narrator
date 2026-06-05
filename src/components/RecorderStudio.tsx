@@ -996,6 +996,31 @@ export function RecorderStudio({
               )}
             </div>
           )}
+          {(convStartAt !== null || convPhase) && (
+            <div className="flex flex-wrap items-center gap-3 rounded-lg border border-brand/40 bg-brand/5 px-3 py-2 text-xs">
+              <span className="inline-flex items-center gap-1.5 font-medium text-brand">
+                {convStartAt !== null ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <FileVideo className="h-3.5 w-3.5" />
+                )}
+                {convStartAt !== null ? "تحويل MP4" : "MP4"}
+              </span>
+              <span className="tabular-nums text-foreground">{formatDuration(convElapsedMs)}</span>
+              <span className="tabular-nums text-muted-foreground">{convProgress}%</span>
+              <div className="relative h-1.5 flex-1 min-w-[120px] overflow-hidden rounded-full bg-brand/15">
+                <div
+                  className="absolute inset-y-0 left-0 bg-brand transition-[width] duration-200"
+                  style={{ width: `${convProgress}%` }}
+                />
+              </div>
+              {convPhase && (
+                <span className="text-muted-foreground truncate max-w-[40%]" title={convPhase}>
+                  {convPhase}
+                </span>
+              )}
+            </div>
+          )}
           <Progress value={progress} />
           <p className="text-xs text-muted-foreground">{phase}</p>
         </div>
