@@ -218,7 +218,8 @@ export function RecorderStudio({
       setPhase("جارٍ التسجيل…");
 
       // 4) Walk through scenes
-      for (let i = 0; i < scenes.length; i++) {
+      for (let i = startFromIndex; i < scenes.length; i++) {
+
         if (stopFlagRef.current) break;
         const scene = scenes[i];
         setCurrentIdx(i); onSceneChange?.(i);
