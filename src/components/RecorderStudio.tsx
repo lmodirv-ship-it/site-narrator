@@ -617,6 +617,11 @@ export function RecorderStudio({
   // so that a real downloadable file is always available.
   const startPlayback = useCallback(async () => {
     setError(null);
+    if (!dirHandleRef.current) {
+      setPhase("اختر مجلد الحفظ أولاً حتى يبدأ إنشاء الفيديو وحفظه على الحاسوب.");
+      const picked = await pickFolder();
+      if (!picked) return;
+    }
     setPlaying(true);
     stopFlagRef.current = false;
     recChunksRef.current = [];
@@ -755,18 +760,21 @@ export function RecorderStudio({
       drawingRef.current = false;
       setPlaying(false);
     }
-  }, [preloadAudio, scenes, animateCursor, secondsPerPage, voicePitch, voiceSpeed, voicePreset, startFromIndex, onSceneChange, siteName, finalizeDownloadFromChunks, setLastUrl]);
+  }, [preloadAudio, scenes, animateCursor, secondsPerPage, voicePitch, voiceSpeed, voicePreset, startFromIndex, onSceneChange, siteName, finalizeDownloadFromChunks, setLastUrl, pickFolder]);
 
 
   // Auto-start playback on mount (no screen-share prompt)
   const startedRef = useRef(false);
   useEffect(() => {
     if (startedRef.current) return;
+    if (!dirHandle) {
+      setPhase("اختر مجلد الحفظ على الحاسوب لبدء إنشاء الفيديو.");
+      return;
+    }
     startedRef.current = true;
     void startPlayback();
     return () => { stopFlagRef.current = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [dirHandle, startPlayback]);
 
 
   return (
