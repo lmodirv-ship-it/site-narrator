@@ -231,10 +231,15 @@ export function RecorderStudio({
         } catch (e) {
           console.error("tts scene", i, e);
         }
+        // Memory throttle: lower budget → longer pause to allow GC
+        const budget = memBudgetRef.current;
+        const pauseMs = budget >= 1024 ? 0 : budget >= 512 ? 40 : budget >= 256 ? 150 : 320;
+        if (pauseMs > 0) await new Promise((r) => setTimeout(r, pauseMs));
       }
     },
     [scenes, language, synthesize],
   );
+
 
   const startRecording = useCallback(async () => {
     setError(null);
