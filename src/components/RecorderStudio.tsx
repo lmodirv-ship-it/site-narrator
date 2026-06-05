@@ -44,6 +44,10 @@ export function RecorderStudio({
   const stageRef = useRef<HTMLDivElement>(null);
   const cursorRef = useRef<HTMLDivElement>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
+  const recChunksRef = useRef<Blob[]>([]);
+  const recMimeRef = useRef<string>("video/webm");
+  const drawingRef = useRef<boolean>(false);
+  const currentSceneRef = useRef<Scene | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const stopFlagRef = useRef(false);
   const audioBuffersRef = useRef<Map<number, AudioBuffer>>(new Map());
