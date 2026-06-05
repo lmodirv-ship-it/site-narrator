@@ -693,31 +693,34 @@ export function RecorderStudio({
   }, [preloadAudio, scenes, animateCursor, secondsPerPage, voicePitch, voiceSpeed, voicePreset, startFromIndex, onSceneChange, siteName, finalizeDownloadFromChunks, setLastUrl, pickFolder]);
 
 
-  // Auto-start playback on mount (no screen-share prompt)
-  const startedRef = useRef(false);
+  // No auto-start: user must explicitly press the start button after
+  // choosing a folder. This avoids the recurring "video started without me
+  // picking a folder" confusion. Cleanup the stop flag on unmount only.
   useEffect(() => {
-    if (startedRef.current) return;
-    if (!dirHandle) {
-      setPhase("اختر مجلد الحفظ على الحاسوب لبدء إنشاء الفيديو.");
-      return;
-    }
-    startedRef.current = true;
-    void startPlayback();
     return () => { stopFlagRef.current = true; };
-  }, [dirHandle, startPlayback]);
+  }, []);
 
 
   return (
     <div className="space-y-4">
+      {/* Preview-mode banner — sets correct expectations */}
+      <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200 leading-relaxed">
+        <strong>وضع المعاينة داخل المتصفح.</strong> هذا التسجيل يعتمد على
+        canvas + MediaRecorder وقد يتأثر بصلاحيات المتصفح وحدود الذاكرة.
+        لإنتاج <code dir="ltr">final.mp4</code> حقيقي وأجزاء
+        <code dir="ltr"> segment-XXX.mp4</code> كل 30 ثانية، شغّل الخادم
+        المحلي (Playwright + FFmpeg) من مجلد <code dir="ltr">local-server/</code>.
+      </div>
+
       {/* Top controls */}
       <div className="flex flex-wrap items-center gap-2">
         {playing ? (
           <Button variant="destructive" onClick={stop} className="gap-2">
-            <Square className="h-4 w-4" /> إيقاف التشغيل
+            <Square className="h-4 w-4" /> إيقاف المعاينة
           </Button>
         ) : (
-          <Button onClick={startPlayback} className="gap-2" variant="secondary">
-            <Play className="h-4 w-4" /> {dirHandle ? "بدء / إعادة إنشاء الفيديو" : "اختر المجلد وابدأ"}
+          <Button onClick={startPlayback} disabled={!dirHandle} className="gap-2" variant="secondary">
+            <Play className="h-4 w-4" /> {dirHandle ? "بدء معاينة داخل المتصفح" : "اختر مجلداً أولاً"}
           </Button>
         )}
 

@@ -1,0 +1,20 @@
+{
+  "name": "hn-maker-local-server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local Playwright + FFmpeg recorder for Hn-MAKER. Produces real MP4 segments and final.mp4 in the chosen work folder.",
+  "type": "module",
+  "scripts": {
+    "postinstall": "playwright install chromium",
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "cors": "^2.8.5",
+    "playwright": "^1.47.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

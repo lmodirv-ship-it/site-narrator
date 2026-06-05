@@ -10,6 +10,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { RecorderStudio } from "@/components/RecorderStudio";
+import { LocalRecorderPanel } from "@/components/LocalRecorderPanel";
 import { Particles } from "@/components/Particles";
 import { GenerationOverlay } from "@/components/GenerationOverlay";
 
@@ -363,6 +364,7 @@ function Index() {
                   <ArrowRight className="h-3.5 w-3.5" /> رجوع للإعدادات
                 </button>
               </div>
+              <LocalRecorderPanel url={url} siteName={siteName} />
               <RecorderStudio
                 scenes={result.scenes}
                 language={voicePreset.lang}
