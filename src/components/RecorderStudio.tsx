@@ -5,9 +5,11 @@ import { Progress } from "@/components/ui/progress";
 import {
   Play, Square, Download, Loader2, MousePointer2,
   FileVideo, Volume2, AlertCircle, Eye,
+  Cpu, Minus, Plus, FolderOpen, FolderCheck,
 } from "lucide-react";
 import type { Scene } from "@/lib/tutorial.functions";
 import { synthesizeSpeech } from "@/lib/tts.functions";
+
 
 type Effect = "none" | "zoom" | "fade";
 
@@ -67,6 +69,75 @@ export function RecorderStudio({
   const [currentIdx, setCurrentIdx] = useState(0);
   const [iframeBlocked, setIframeBlocked] = useState(false);
 
+  // Real memory controls (Chromium exposes performance.memory)
+  const [memBudget, setMemBudget] = useState<number>(512); // MB target
+  const [memUsed, setMemUsed] = useState<number>(0);
+  const [memLimit, setMemLimit] = useState<number>(0);
+  const [dirHandle, setDirHandle] = useState<FileSystemDirectoryHandle | null>(null);
+  const memBudgetRef = useRef(memBudget);
+  useEffect(() => { memBudgetRef.current = memBudget; }, [memBudget]);
+
+  useEffect(() => {
+    const read = () => {
+      const m = (performance as unknown as { memory?: { usedJSHeapSize: number; jsHeapSizeLimit: number } }).memory;
+      if (m) {
+        setMemUsed(Math.round(m.usedJSHeapSize / 1048576));
+        setMemLimit(Math.round(m.jsHeapSizeLimit / 1048576));
+      }
+    };
+    read();
+    const t = setInterval(read, 1500);
+    return () => clearInterval(t);
+  }, []);
+
+  const pickFolder = useCallback(async () => {
+    try {
+      const picker = (window as unknown as { showDirectoryPicker?: (o?: { mode?: string }) => Promise<FileSystemDirectoryHandle> }).showDirectoryPicker;
+      if (!picker) {
+        setError("متصفحك لا يدعم اختيار مجلد محلي. استخدم Chrome/Edge على الحاسوب.");
+        return;
+      }
+      const h = await picker({ mode: "readwrite" });
+      setDirHandle(h);
+    } catch (e) {
+      if ((e as { name?: string })?.name !== "AbortError") {
+        setError("تعذّر فتح المجلد");
+      }
+    }
+  }, []);
+
+  const saveToFolder = useCallback(async (videoBlob: Blob, name: string) => {
+    if (!dirHandle) return;
+    try {
+      const fh = await dirHandle.getFileHandle(name, { create: true });
+      const w = await fh.createWritable();
+      await w.write(videoBlob);
+      await w.close();
+      const infoName = name.replace(/\.[^.]+$/, "") + "-info.txt";
+      const info = [
+        `العنوان: ${name}`,
+        `الموقع: ${siteName}`,
+        `اللغة: ${language}`,
+        `عدد المشاهد: ${scenes.length}`,
+        `تاريخ الإنشاء: ${new Date().toLocaleString()}`,
+        ``,
+        `— تعريف بالموقع —`,
+        scenes[0]?.narration ?? "",
+        ``,
+        `— المشاهد —`,
+        ...scenes.map((s, i) => `${i + 1}. ${s.pageTitle}\n   ${s.pageUrl}\n   ${s.narration}\n`),
+      ].join("\n");
+      const ih = await dirHandle.getFileHandle(infoName, { create: true });
+      const iw = await ih.createWritable();
+      await iw.write(new Blob([info], { type: "text/plain;charset=utf-8" }));
+      await iw.close();
+    } catch (e) {
+      console.error("save to folder failed", e);
+      setError("تعذّر الحفظ في المجلد المحدد");
+    }
+  }, [dirHandle, scenes, siteName, language]);
+
+
 
   const synthesize = useServerFn(synthesizeSpeech);
 
@@ -93,13 +164,15 @@ export function RecorderStudio({
   // Auto-download MP4/WebM as soon as it's ready
   useEffect(() => {
     if (!downloadUrl) return;
+    if (dirHandle) return; // already saved to chosen folder
+
     const a = document.createElement("a");
     a.href = downloadUrl;
     a.download = downloadName;
     document.body.appendChild(a);
     a.click();
     a.remove();
-  }, [downloadUrl, downloadName]);
+  }, [downloadUrl, downloadName, dirHandle]);
 
   const setLogStatus = (idx: number, status: LogEntry["status"]) => {
     setLogs((prev) => prev.map((l) => (l.idx === idx ? { ...l, status } : l)));
@@ -160,10 +233,15 @@ export function RecorderStudio({
         } catch (e) {
           console.error("tts scene", i, e);
         }
+        // Memory throttle: lower budget → longer pause to allow GC
+        const budget = memBudgetRef.current;
+        const pauseMs = budget >= 1024 ? 0 : budget >= 512 ? 40 : budget >= 256 ? 150 : 320;
+        if (pauseMs > 0) await new Promise((r) => setTimeout(r, pauseMs));
       }
     },
     [scenes, language, synthesize],
   );
+
 
   const startRecording = useCallback(async () => {
     setError(null);
@@ -199,9 +277,15 @@ export function RecorderStudio({
         ? "video/webm;codecs=vp9,opus"
         : "video/webm";
       const chunks: Blob[] = [];
+      // Bitrate scales with memory budget (more RAM → higher quality)
+      const bps = memBudgetRef.current >= 1024 ? 12_000_000
+        : memBudgetRef.current >= 512 ? 8_000_000
+        : memBudgetRef.current >= 256 ? 5_000_000
+        : 3_000_000;
       const rec = new MediaRecorder(combined, {
-        mimeType: mime, videoBitsPerSecond: 8_000_000, audioBitsPerSecond: 128_000,
+        mimeType: mime, videoBitsPerSecond: bps, audioBitsPerSecond: 128_000,
       });
+
       recorderRef.current = rec;
       rec.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
       const stopped = new Promise<void>((res) => { rec.onstop = () => res(); });
@@ -301,15 +385,20 @@ export function RecorderStudio({
         const out = (await ffmpeg.readFile("out.mp4")) as Uint8Array;
         const ab = out.buffer.slice(out.byteOffset, out.byteOffset + out.byteLength) as ArrayBuffer;
         const mp4Blob = new Blob([ab], { type: "video/mp4" });
+        const name = `${siteName}-tutorial.mp4`;
+        await saveToFolder(mp4Blob, name);
         setDownloadUrl(URL.createObjectURL(mp4Blob));
-        setDownloadName(`${siteName}-tutorial.mp4`);
-        setPhase("جاهز ✓");
+        setDownloadName(name);
+        setPhase(dirHandle ? `جاهز ✓ — تم الحفظ في المجلد المحدد` : "جاهز ✓");
       } catch (e) {
         console.error("ffmpeg failed", e);
+        const name = `${siteName}-tutorial.webm`;
+        await saveToFolder(webmBlob, name);
         setDownloadUrl(URL.createObjectURL(webmBlob));
-        setDownloadName(`${siteName}-tutorial.webm`);
+        setDownloadName(name);
         setPhase("تعذّر التحويل لـ MP4 — تم توفير WebM");
       }
+
       setProgress(100);
     } catch (e) {
       console.error(e);
@@ -320,7 +409,7 @@ export function RecorderStudio({
       setPreparing(false);
     }
     void effect; // reserved for future visual effects
-  }, [preloadAudio, scenes, language, siteName, animateCursor, secondsPerPage, effect, voicePitch, voiceSpeed, startFromIndex, onSceneChange]);
+  }, [preloadAudio, scenes, language, siteName, animateCursor, secondsPerPage, effect, voicePitch, voiceSpeed, startFromIndex, onSceneChange, saveToFolder, dirHandle]);
 
   const stop = useCallback(() => {
     stopFlagRef.current = true;
@@ -451,6 +540,57 @@ export function RecorderStudio({
           المشهد {currentIdx + 1} / {scenes.length}
         </span>
       </div>
+
+      {/* Memory budget + Folder picker */}
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border/60 bg-card/40 backdrop-blur p-3">
+        <div className="flex items-center gap-2">
+          <Cpu className="h-4 w-4 text-brand" />
+          <span className="text-xs font-semibold">ذاكرة الحاسوب:</span>
+          <Button
+            size="icon"
+            variant="outline"
+            className="h-7 w-7"
+            onClick={() => setMemBudget((v) => Math.max(128, v - 128))}
+            title="إنقاص استهلاك الذاكرة (أبطأ)"
+          >
+            <Minus className="h-3 w-3" />
+          </Button>
+          <span className="tabular-nums text-sm font-bold text-brand min-w-[64px] text-center" dir="ltr">
+            {memBudget} MB
+          </span>
+          <Button
+            size="icon"
+            variant="outline"
+            className="h-7 w-7"
+            onClick={() => setMemBudget((v) => Math.min(4096, v + 128))}
+            title="زيادة استهلاك الذاكرة (أسرع)"
+          >
+            <Plus className="h-3 w-3" />
+          </Button>
+          <span className="text-[11px] text-muted-foreground" dir="ltr">
+            {memUsed > 0 ? `الفعلي: ${memUsed}${memLimit ? ` / ${memLimit}` : ""} MB` : "غير متاح في هذا المتصفح"}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2 ms-auto">
+          <Button
+            size="sm"
+            variant={dirHandle ? "secondary" : "outline"}
+            onClick={pickFolder}
+            className="gap-2"
+            title="اختر مجلداً على الحاسوب لحفظ الفيديو وملف المعلومات"
+          >
+            {dirHandle ? <FolderCheck className="h-4 w-4 text-green-500" /> : <FolderOpen className="h-4 w-4" />}
+            {dirHandle ? `محفوظ في: ${dirHandle.name}` : "اختيار مجلد الحفظ على الحاسوب"}
+          </Button>
+          {dirHandle && (
+            <Button size="sm" variant="ghost" onClick={() => setDirHandle(null)} className="text-xs">
+              إلغاء
+            </Button>
+          )}
+        </div>
+      </div>
+
 
       {/* Main: iframe stage 70% + analysis 30% on desktop */}
       <div className="grid gap-4 lg:grid-cols-[70%_30%]">
