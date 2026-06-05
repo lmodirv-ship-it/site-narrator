@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Loader2, Server, Square, FolderInput, CheckCircle2, AlertTriangle, Film } from "lucide-react";
+import { Loader2, Server, Square, FolderInput, CheckCircle2, AlertTriangle, Film, Cpu } from "lucide-react";
 import { usePersistentState } from "@/hooks/use-persistent-state";
 import {
   LOCAL_SERVER_URL, checkLocalServer, startLocalJob, stopLocalJob,
-  subscribeLocalJob, type LocalEvent, type LocalJob,
+  subscribeLocalJob, isElectronApp, type LocalEvent, type LocalJob,
 } from "@/lib/local-recorder";
+import { LocalServerSetupCard } from "./LocalServerSetupCard";
 
 interface Props {
   url: string;
@@ -74,6 +75,9 @@ export function LocalRecorderPanel({ url, siteName }: Props) {
   const canStart = !!workDir.trim() && (health && health !== "checking" && health.ok);
   const running = job && (job.status === "starting" || job.status === "recording" || job.status === "merging");
 
+  const electron = isElectronApp();
+  const offline = health !== "checking" && !health?.ok;
+
   return (
     <div className="rounded-xl border border-brand/40 bg-brand/5 p-4 space-y-3">
       <div className="flex items-center gap-2">
@@ -81,13 +85,22 @@ export function LocalRecorderPanel({ url, siteName }: Props) {
           <Server className="h-4 w-4 text-brand" />
         </div>
         <div className="flex-1">
-          <h3 className="font-semibold text-sm">إنتاج MP4 حقيقي عبر الخادم المحلي</h3>
+          <h3 className="font-semibold text-sm flex items-center gap-2">
+            إنتاج MP4 حقيقي عبر الخادم المحلي
+            {electron && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-brand/15 text-brand text-[10px] px-2 py-0.5">
+                <Cpu className="h-3 w-3" /> Desktop
+              </span>
+            )}
+          </h3>
           <p className="text-xs text-muted-foreground">
             Playwright + FFmpeg · أجزاء كل {segSec}ث · ينتج <code dir="ltr">final.mp4</code> و <code dir="ltr">video-info.txt</code>
           </p>
         </div>
         <HealthBadge health={health} onRefresh={refreshHealth} />
       </div>
+
+      {offline && <LocalServerSetupCard onRecheck={refreshHealth} />}
 
       <div className="grid gap-3 md:grid-cols-2">
         <label className="space-y-1 text-xs">
@@ -152,9 +165,8 @@ export function LocalRecorderPanel({ url, siteName }: Props) {
       )}
 
       {health !== "checking" && !health?.ok && (
-        <div className="text-xs text-amber-300">
-          لم يتم الاتصال بالخادم المحلي على <code dir="ltr">{LOCAL_SERVER_URL}</code>.
-          شغّله أولاً: <code dir="ltr">cd local-server &amp;&amp; npm install &amp;&amp; npm start</code>
+        <div className="text-[11px] text-muted-foreground">
+          العنوان المُتوقع: <code dir="ltr">{LOCAL_SERVER_URL}</code>
         </div>
       )}
       {health && health !== "checking" && health.ok && !health.ffmpeg && (
