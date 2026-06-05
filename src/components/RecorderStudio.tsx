@@ -107,15 +107,19 @@ export function RecorderStudio({
   const [error, setError] = useState<string | null>(null);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [iframeBlocked, setIframeBlocked] = useState(false);
+  const [snapshotSaving, setSnapshotSaving] = useState(false);
+  const snapshotSavingRef = useRef(false);
 
   // Real memory controls (Chromium exposes performance.memory)
   const [memBudget, setMemBudget] = useState<number>(512); // MB target
   const [memUsed, setMemUsed] = useState<number>(0);
   const [memLimit, setMemLimit] = useState<number>(0);
   const [dirHandle, setDirHandle] = useState<FileSystemDirectoryHandle | null>(null);
+  const dirHandleRef = useRef<FileSystemDirectoryHandle | null>(null);
   const [resolution, setResolution] = useState<480 | 720 | 1080 | 1440>(1080);
   const resolutionRef = useRef(resolution);
   useEffect(() => { resolutionRef.current = resolution; }, [resolution]);
+  useEffect(() => { dirHandleRef.current = dirHandle; }, [dirHandle]);
   // Encoding settings
   const [codec, setCodec] = useState<"libx264" | "libx265">("libx264");
   const [crf, setCrf] = useState<number>(20);
@@ -150,32 +154,36 @@ export function RecorderStudio({
       const inIframe = window.self !== window.top;
       if (!picker) {
         setError("متصفحك لا يدعم اختيار مجلد محلي. استخدم Chrome / Edge على الحاسوب.");
-        return;
+        return false;
       }
       if (inIframe) {
         const openUrl = window.location.href;
         setError(`اختيار المجلد محظور داخل معاينة Lovable. افتح التطبيق في تبويب مستقل ثم اضغط الزر مرة أخرى: ${openUrl}`);
         try { window.open(openUrl, "_blank", "noopener"); } catch { /* noop */ }
-        return;
+        return false;
       }
       const h = await picker({ mode: "readwrite" });
       setDirHandle(h);
+      dirHandleRef.current = h;
       setError(null);
+      return true;
     } catch (e) {
       const name = (e as { name?: string })?.name;
-      if (name === "AbortError") return;
+      if (name === "AbortError") return false;
       if (name === "SecurityError") {
         setError("اختيار المجلد محظور هنا (سياسة أمان). افتح التطبيق في تبويب مستقل.");
       } else {
         setError("تعذّر فتح المجلد: " + ((e as Error)?.message ?? "خطأ غير معروف"));
       }
+      return false;
     }
   }, []);
 
   const saveToFolder = useCallback(async (videoBlob: Blob, name: string) => {
-    if (!dirHandle) return;
+    const folder = dirHandleRef.current;
+    if (!folder) return false;
     try {
-      const fh = await dirHandle.getFileHandle(name, { create: true });
+      const fh = await folder.getFileHandle(name, { create: true });
       const w = await fh.createWritable();
       await w.write(videoBlob);
       await w.close();
@@ -193,15 +201,17 @@ export function RecorderStudio({
         `— المشاهد —`,
         ...scenes.map((s, i) => `${i + 1}. ${s.pageTitle}\n   ${s.pageUrl}\n   ${s.narration}\n`),
       ].join("\n");
-      const ih = await dirHandle.getFileHandle(infoName, { create: true });
+      const ih = await folder.getFileHandle(infoName, { create: true });
       const iw = await ih.createWritable();
       await iw.write(new Blob([info], { type: "text/plain;charset=utf-8" }));
       await iw.close();
+      return true;
     } catch (e) {
       console.error("save to folder failed", e);
       setError("تعذّر الحفظ في المجلد المحدد");
+      return false;
     }
-  }, [dirHandle, scenes, siteName, language]);
+  }, [scenes, siteName, language]);
 
 
 
@@ -364,7 +374,7 @@ export function RecorderStudio({
       // If user stops sharing from browser UI
       displayStream.getVideoTracks()[0].addEventListener("ended", () => {
         stopFlagRef.current = true;
-        try { rec.state !== "inactive" && rec.stop(); } catch { /* noop */ }
+        try { if (rec.state !== "inactive") rec.stop(); } catch { /* noop */ }
       });
 
       setPreparing(false);
@@ -422,7 +432,7 @@ export function RecorderStudio({
       }
 
       setPhase("إنهاء التسجيل…");
-      try { rec.state !== "inactive" && rec.stop(); } catch { /* noop */ }
+      try { if (rec.state !== "inactive") rec.stop(); } catch { /* noop */ }
       displayStream.getTracks().forEach((t) => t.stop());
       await stopped;
       audioCtx.close();
@@ -491,7 +501,7 @@ export function RecorderStudio({
       setPreparing(false);
     }
     void effect; // reserved for future visual effects
-  }, [preloadAudio, scenes, language, siteName, animateCursor, secondsPerPage, effect, voicePitch, voiceSpeed, startFromIndex, onSceneChange, saveToFolder, dirHandle]);
+  }, [preloadAudio, scenes, siteName, animateCursor, secondsPerPage, effect, voicePitch, voiceSpeed, startFromIndex, onSceneChange, saveToFolder, dirHandle]);
   void startRecording;
 
   const stop = useCallback(() => {
@@ -522,9 +532,12 @@ export function RecorderStudio({
   };
 
   // Build a downloadable blob from whatever has been captured so far (and convert to MP4 best-effort).
-  const finalizeDownloadFromChunks = useCallback(async (label: string) => {
+  const finalizeDownloadFromChunks = useCallback(async (label: string, autoDownload = false) => {
+    if (snapshotSavingRef.current) return;
     const chunks = recChunksRef.current;
     if (!chunks.length) return;
+    snapshotSavingRef.current = true;
+    setSnapshotSaving(true);
     const webmBlob = new Blob(chunks, { type: recMimeRef.current });
     const baseName = `${siteName}-tutorial`;
     // Try MP4 conversion; fall back to WebM if it fails.
@@ -556,42 +569,57 @@ export function RecorderStudio({
       const ab = out.buffer.slice(out.byteOffset, out.byteOffset + out.byteLength) as ArrayBuffer;
       const mp4Blob = new Blob([ab], { type: "video/mp4" });
       const name = `${baseName}.mp4`;
-      await saveToFolder(mp4Blob, name);
+      const saved = await saveToFolder(mp4Blob, name);
       if (downloadUrl) URL.revokeObjectURL(downloadUrl);
-      setDownloadUrl(URL.createObjectURL(mp4Blob));
+      const url = URL.createObjectURL(mp4Blob);
+      setDownloadUrl(url);
       setDownloadName(name);
-      setPhase(`${label} — جاهز ✓ MP4`);
+      if (autoDownload) {
+        const a = document.createElement("a");
+        a.href = url; a.download = name;
+        document.body.appendChild(a); a.click(); a.remove();
+      }
+      setPhase(`${label} — ${saved ? "تم حفظ نسخة في المجلد" : "جاهز للتحميل"} ✓ MP4`);
     } catch (e) {
       console.error("ffmpeg failed", e);
       const name = `${baseName}.webm`;
-      await saveToFolder(webmBlob, name);
+      const saved = await saveToFolder(webmBlob, name);
       if (downloadUrl) URL.revokeObjectURL(downloadUrl);
-      setDownloadUrl(URL.createObjectURL(webmBlob));
+      const url = URL.createObjectURL(webmBlob);
+      setDownloadUrl(url);
       setDownloadName(name);
-      setPhase(`${label} — جاهز ✓ WebM`);
+      if (autoDownload) {
+        const a = document.createElement("a");
+        a.href = url; a.download = name;
+        document.body.appendChild(a); a.click(); a.remove();
+      }
+      setPhase(`${label} — ${saved ? "تم حفظ نسخة في المجلد" : "جاهز للتحميل"} ✓ WebM`);
+    } finally {
+      snapshotSavingRef.current = false;
+      setSnapshotSaving(false);
     }
   }, [siteName, saveToFolder, downloadUrl]);
 
   // Click handler for "Download now" — works mid-playback too.
   const handleDownloadClick = useCallback(async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
+    // Mid-playback: flush recorder and build a fresh copy without stopping production.
+    const rec = recorderRef.current;
+    if (rec && rec.state === "recording") {
+      try { rec.requestData(); } catch { /* noop */ }
+      // give the dataavailable event a tick
+      await new Promise((r) => setTimeout(r, 250));
+      await finalizeDownloadFromChunks("نسخة فورية", true);
+      return;
+    }
     if (downloadUrl) {
       const a = document.createElement("a");
       a.href = downloadUrl; a.download = downloadName;
       document.body.appendChild(a); a.click(); a.remove();
       return;
     }
-    // Mid-playback: flush recorder and build a partial file.
-    const rec = recorderRef.current;
-    if (rec && rec.state === "recording") {
-      try { rec.requestData(); } catch { /* noop */ }
-      // give the dataavailable event a tick
-      await new Promise((r) => setTimeout(r, 250));
-      await finalizeDownloadFromChunks("جزئي");
-      return;
-    }
     if (recChunksRef.current.length) {
-      await finalizeDownloadFromChunks("جزئي");
+      await finalizeDownloadFromChunks("نسخة فورية", true);
     } else {
       setError("لا يوجد محتوى بعد — انتظر بدء التشغيل لحظات ثم أعد المحاولة.");
     }
@@ -601,6 +629,11 @@ export function RecorderStudio({
   // so that a real downloadable file is always available.
   const startPlayback = useCallback(async () => {
     setError(null);
+    if (!dirHandleRef.current) {
+      setPhase("اختر مجلد الحفظ أولاً حتى يبدأ إنشاء الفيديو وحفظه على الحاسوب.");
+      const picked = await pickFolder();
+      if (!picked) return;
+    }
     setPlaying(true);
     stopFlagRef.current = false;
     recChunksRef.current = [];
@@ -725,7 +758,7 @@ export function RecorderStudio({
       }
 
       drawingRef.current = false;
-      try { rec.state !== "inactive" && rec.stop(); } catch { /* noop */ }
+      try { if (rec.state !== "inactive") rec.stop(); } catch { /* noop */ }
       await stopped;
       audioCtx.close();
       setPhase("اكتمل التشغيل — تجهيز الملف…");
@@ -739,18 +772,21 @@ export function RecorderStudio({
       drawingRef.current = false;
       setPlaying(false);
     }
-  }, [preloadAudio, scenes, animateCursor, secondsPerPage, voicePitch, voiceSpeed, voicePreset, startFromIndex, onSceneChange, siteName, finalizeDownloadFromChunks, setLastUrl]);
+  }, [preloadAudio, scenes, animateCursor, secondsPerPage, voicePitch, voiceSpeed, voicePreset, startFromIndex, onSceneChange, siteName, finalizeDownloadFromChunks, setLastUrl, pickFolder]);
 
 
   // Auto-start playback on mount (no screen-share prompt)
   const startedRef = useRef(false);
   useEffect(() => {
     if (startedRef.current) return;
+    if (!dirHandle) {
+      setPhase("اختر مجلد الحفظ على الحاسوب لبدء إنشاء الفيديو.");
+      return;
+    }
     startedRef.current = true;
     void startPlayback();
     return () => { stopFlagRef.current = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [dirHandle, startPlayback]);
 
 
   return (
@@ -763,7 +799,7 @@ export function RecorderStudio({
           </Button>
         ) : !recording && !preparing ? (
           <Button onClick={startPlayback} className="gap-2" variant="secondary">
-            <Play className="h-4 w-4" /> إعادة التشغيل
+            <Play className="h-4 w-4" /> {dirHandle ? "بدء / إعادة إنشاء الفيديو" : "اختر المجلد وابدأ"}
           </Button>
         ) : (
           <Button variant="destructive" onClick={stop} className="gap-2">
@@ -784,8 +820,8 @@ export function RecorderStudio({
           }`}
           title={downloadUrl ? "تحميل الملف الجاهز" : "تحميل ما تم تسجيله حتى الآن"}
         >
-          <Download className="h-4 w-4" />
-          {downloadUrl ? `تحميل الفيديو (${downloadName})` : "تحميل الآن (المحتوى الحالي)"}
+          {snapshotSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+          {snapshotSaving ? "تجهيز نسخة فورية…" : downloadUrl ? `تحميل الفيديو (${downloadName})` : "تحميل الآن (أي لحظة)"}
         </button>
         <span className="text-xs text-muted-foreground ms-auto">
           المشهد {currentIdx + 1} / {scenes.length}
