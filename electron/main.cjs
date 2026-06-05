@@ -2,7 +2,7 @@
 // يفتح الواجهة المنشورة في نافذة سطح مكتب، ويُشغّل local-server في الخلفية
 // لإنتاج MP4 الحقيقي عبر Playwright + FFmpeg.
 
-const { app, BrowserWindow, shell, Menu } = require("electron");
+const { app, BrowserWindow, shell, Menu, ipcMain } = require("electron");
 const path = require("path");
 const { spawn } = require("child_process");
 const fs = require("fs");
@@ -60,7 +60,8 @@ function createWindow() {
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: true,
+      sandbox: false,
+      preload: path.join(__dirname, "preload.cjs"),
     },
   });
 
@@ -97,6 +98,21 @@ function createWindow() {
   ]);
   Menu.setApplicationMenu(menu);
 }
+
+ipcMain.handle("hn:restart-local-server", async () => {
+  stopLocalServer();
+  await new Promise((r) => setTimeout(r, 300));
+  startLocalServer();
+  return { ok: true };
+});
+
+ipcMain.handle("hn:open-external", async (_e, url) => {
+  if (typeof url === "string" && /^https?:\/\//i.test(url)) {
+    await shell.openExternal(url);
+    return { ok: true };
+  }
+  return { ok: false };
+});
 
 app.whenReady().then(() => {
   startLocalServer();
