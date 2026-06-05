@@ -359,7 +359,7 @@ export function RecorderStudio({
         {/* Stage */}
         <div
           ref={stageRef}
-          className="relative rounded-xl border border-border bg-black aspect-video overflow-hidden shadow-xl"
+          className="relative rounded-xl border border-border bg-black overflow-hidden shadow-xl h-[85vh]"
         >
           <iframe
             ref={iframeRef}
