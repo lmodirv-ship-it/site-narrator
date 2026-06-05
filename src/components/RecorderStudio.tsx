@@ -77,6 +77,17 @@ export function RecorderStudio({
   const [resolution, setResolution] = useState<480 | 720 | 1080 | 1440>(1080);
   const resolutionRef = useRef(resolution);
   useEffect(() => { resolutionRef.current = resolution; }, [resolution]);
+  // Encoding settings
+  const [codec, setCodec] = useState<"libx264" | "libx265">("libx264");
+  const [crf, setCrf] = useState<number>(20);
+  const [bitrateK, setBitrateK] = useState<number>(0); // 0 = auto (CRF-driven)
+  const codecRef = useRef(codec);
+  const crfRef = useRef(crf);
+  const bitrateRef = useRef(bitrateK);
+  useEffect(() => { codecRef.current = codec; }, [codec]);
+  useEffect(() => { crfRef.current = crf; }, [crf]);
+  useEffect(() => { bitrateRef.current = bitrateK; }, [bitrateK]);
+
   const memBudgetRef = useRef(memBudget);
 
   useEffect(() => { memBudgetRef.current = memBudget; }, [memBudget]);
@@ -382,14 +393,24 @@ export function RecorderStudio({
           setProgress(92 + Math.min(p, 1) * 7);
         });
         await ffmpeg.writeFile("in.webm", await fetchFile(webmBlob));
-        await ffmpeg.exec([
+        const args = [
           "-i", "in.webm",
           "-vf", `scale=-2:${resolutionRef.current}`,
-          "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+          "-c:v", codecRef.current, "-preset", "veryfast",
+        ];
+        if (bitrateRef.current > 0) {
+          args.push("-b:v", `${bitrateRef.current}k`, "-maxrate", `${Math.round(bitrateRef.current * 1.5)}k`, "-bufsize", `${bitrateRef.current * 2}k`);
+        } else {
+          args.push("-crf", String(crfRef.current));
+        }
+        if (codecRef.current === "libx265") args.push("-tag:v", "hvc1");
+        args.push(
           "-c:a", "aac", "-b:a", "192k",
           "-movflags", "+faststart",
           "out.mp4",
-        ]);
+        );
+        await ffmpeg.exec(args);
+
 
         const out = (await ffmpeg.readFile("out.mp4")) as Uint8Array;
         const ab = out.buffer.slice(out.byteOffset, out.byteOffset + out.byteLength) as ArrayBuffer;
@@ -611,6 +632,69 @@ export function RecorderStudio({
             {resolution >= 1080 ? "أبطأ، حجم أكبر" : resolution <= 480 ? "أسرع، حجم أصغر" : "متوازن"}
           </span>
         </div>
+
+        {/* Codec */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold">الترميز:</span>
+          <div className="inline-flex rounded-lg border border-border/60 overflow-hidden">
+            {([
+              { v: "libx264", label: "H.264", hint: "توافق واسع" },
+              { v: "libx265", label: "H.265", hint: "حجم أصغر، أبطأ" },
+            ] as const).map((opt) => (
+              <button
+                key={opt.v}
+                type="button"
+                onClick={() => setCodec(opt.v)}
+                title={opt.hint}
+                className={`px-2.5 py-1 text-xs font-semibold transition ${
+                  codec === opt.v ? "bg-brand text-white" : "bg-card/40 text-muted-foreground hover:text-foreground hover:bg-card"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* CRF */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold">CRF:</span>
+          <Button size="icon" variant="outline" className="h-7 w-7" disabled={bitrateK > 0}
+            onClick={() => setCrf((v) => Math.min(32, v + 1))} title="جودة أقل / حجم أصغر">
+            <Minus className="h-3 w-3" />
+          </Button>
+          <span className="tabular-nums text-sm font-bold text-brand min-w-[28px] text-center" dir="ltr">
+            {bitrateK > 0 ? "—" : crf}
+          </span>
+          <Button size="icon" variant="outline" className="h-7 w-7" disabled={bitrateK > 0}
+            onClick={() => setCrf((v) => Math.max(14, v - 1))} title="جودة أعلى / حجم أكبر">
+            <Plus className="h-3 w-3" />
+          </Button>
+          <span className="text-[11px] text-muted-foreground">18=ممتاز · 23=افتراضي · 28=ضاغط</span>
+        </div>
+
+        {/* Bitrate override */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold">Bitrate:</span>
+          <Button size="icon" variant="outline" className="h-7 w-7"
+            onClick={() => setBitrateK((v) => Math.max(0, v === 0 ? 0 : v - 500))} title="إنقاص">
+            <Minus className="h-3 w-3" />
+          </Button>
+          <span className="tabular-nums text-sm font-bold text-brand min-w-[72px] text-center" dir="ltr">
+            {bitrateK > 0 ? `${bitrateK} kbps` : "تلقائي"}
+          </span>
+          <Button size="icon" variant="outline" className="h-7 w-7"
+            onClick={() => setBitrateK((v) => Math.min(20000, v === 0 ? 2000 : v + 500))} title="زيادة">
+            <Plus className="h-3 w-3" />
+          </Button>
+          {bitrateK > 0 && (
+            <Button size="sm" variant="ghost" className="text-xs h-7" onClick={() => setBitrateK(0)}>
+              تلقائي
+            </Button>
+          )}
+        </div>
+
+
 
 
 
