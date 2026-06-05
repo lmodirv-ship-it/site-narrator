@@ -799,7 +799,7 @@ export function RecorderStudio({
           </Button>
         ) : !recording && !preparing ? (
           <Button onClick={startPlayback} className="gap-2" variant="secondary">
-            <Play className="h-4 w-4" /> إعادة التشغيل
+            <Play className="h-4 w-4" /> {dirHandle ? "بدء / إعادة إنشاء الفيديو" : "اختر المجلد وابدأ"}
           </Button>
         ) : (
           <Button variant="destructive" onClick={stop} className="gap-2">
@@ -820,8 +820,8 @@ export function RecorderStudio({
           }`}
           title={downloadUrl ? "تحميل الملف الجاهز" : "تحميل ما تم تسجيله حتى الآن"}
         >
-          <Download className="h-4 w-4" />
-          {downloadUrl ? `تحميل الفيديو (${downloadName})` : "تحميل الآن (المحتوى الحالي)"}
+          {snapshotSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+          {snapshotSaving ? "تجهيز نسخة فورية…" : downloadUrl ? `تحميل الفيديو (${downloadName})` : "تحميل الآن (أي لحظة)"}
         </button>
         <span className="text-xs text-muted-foreground ms-auto">
           المشهد {currentIdx + 1} / {scenes.length}
