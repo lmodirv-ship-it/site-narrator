@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { RecorderStudio } from "@/components/RecorderStudio";
 import { Particles } from "@/components/Particles";
+import { GenerationOverlay } from "@/components/GenerationOverlay";
+
 import { generateTutorial, type GenerateResult } from "@/lib/tutorial.functions";
 import { MY_LOVABLE_PROJECTS } from "@/lib/my-projects";
 import { VOICE_PRESETS } from "@/lib/voices";
@@ -83,7 +85,9 @@ function Index() {
 
   return (
     <div dir="rtl" className="min-h-screen text-foreground">
+      <GenerationOverlay open={loading} stage={stage} />
       <Particles />
+
       <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
         <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-brand/20 blur-3xl animate-float" />
         <div className="absolute top-40 -right-32 h-96 w-96 rounded-full bg-brand-2/20 blur-3xl animate-float" style={{ animationDelay: "1s" }} />
