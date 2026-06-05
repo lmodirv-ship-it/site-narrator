@@ -466,25 +466,186 @@ export function RecorderStudio({
     setPhase("تم الإيقاف");
   }, []);
 
-  // Playback without screen-share: navigates iframe, animates cursor, plays TTS audio.
+  // Helper: wrap text on canvas (LTR; works fine for Arabic blocks)
+  const wrapText = (ctx: CanvasRenderingContext2D, text: string, x: number, y: number, maxWidth: number, lineHeight: number, maxLines = 8) => {
+    const words = text.split(/\s+/);
+    let line = "";
+    let yy = y;
+    let lines = 0;
+    for (const w of words) {
+      const test = line ? line + " " + w : w;
+      if (ctx.measureText(test).width > maxWidth && line) {
+        ctx.fillText(line, x, yy);
+        line = w;
+        yy += lineHeight;
+        lines++;
+        if (lines >= maxLines) { ctx.fillText("…", x, yy); return; }
+      } else line = test;
+    }
+    if (line) ctx.fillText(line, x, yy);
+  };
+
+  // Build a downloadable blob from whatever has been captured so far (and convert to MP4 best-effort).
+  const finalizeDownloadFromChunks = useCallback(async (label: string) => {
+    const chunks = recChunksRef.current;
+    if (!chunks.length) return;
+    const webmBlob = new Blob(chunks, { type: recMimeRef.current });
+    const baseName = `${siteName}-tutorial`;
+    // Try MP4 conversion; fall back to WebM if it fails.
+    try {
+      setPhase(`${label} — تحويل إلى MP4…`);
+      const { FFmpeg } = await import("@ffmpeg/ffmpeg");
+      const { fetchFile, toBlobURL } = await import("@ffmpeg/util");
+      const ffmpeg = new FFmpeg();
+      const base = "https://unpkg.com/@ffmpeg/core@0.12.10/dist/umd";
+      await ffmpeg.load({
+        coreURL: await toBlobURL(`${base}/ffmpeg-core.js`, "text/javascript"),
+        wasmURL: await toBlobURL(`${base}/ffmpeg-core.wasm`, "application/wasm"),
+      });
+      await ffmpeg.writeFile("in.webm", await fetchFile(webmBlob));
+      const args = [
+        "-i", "in.webm",
+        "-vf", `scale=-2:${resolutionRef.current}`,
+        "-c:v", codecRef.current, "-preset", "veryfast",
+      ];
+      if (bitrateRef.current > 0) {
+        args.push("-b:v", `${bitrateRef.current}k`, "-maxrate", `${Math.round(bitrateRef.current * 1.5)}k`, "-bufsize", `${bitrateRef.current * 2}k`);
+      } else {
+        args.push("-crf", String(crfRef.current));
+      }
+      if (codecRef.current === "libx265") args.push("-tag:v", "hvc1");
+      args.push("-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", "out.mp4");
+      await ffmpeg.exec(args);
+      const out = (await ffmpeg.readFile("out.mp4")) as Uint8Array;
+      const ab = out.buffer.slice(out.byteOffset, out.byteOffset + out.byteLength) as ArrayBuffer;
+      const mp4Blob = new Blob([ab], { type: "video/mp4" });
+      const name = `${baseName}.mp4`;
+      await saveToFolder(mp4Blob, name);
+      if (downloadUrl) URL.revokeObjectURL(downloadUrl);
+      setDownloadUrl(URL.createObjectURL(mp4Blob));
+      setDownloadName(name);
+      setPhase(`${label} — جاهز ✓ MP4`);
+    } catch (e) {
+      console.error("ffmpeg failed", e);
+      const name = `${baseName}.webm`;
+      await saveToFolder(webmBlob, name);
+      if (downloadUrl) URL.revokeObjectURL(downloadUrl);
+      setDownloadUrl(URL.createObjectURL(webmBlob));
+      setDownloadName(name);
+      setPhase(`${label} — جاهز ✓ WebM`);
+    }
+  }, [siteName, saveToFolder, downloadUrl]);
+
+  // Click handler for "Download now" — works mid-playback too.
+  const handleDownloadClick = useCallback(async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    if (downloadUrl) {
+      const a = document.createElement("a");
+      a.href = downloadUrl; a.download = downloadName;
+      document.body.appendChild(a); a.click(); a.remove();
+      return;
+    }
+    // Mid-playback: flush recorder and build a partial file.
+    const rec = recorderRef.current;
+    if (rec && rec.state === "recording") {
+      try { rec.requestData(); } catch { /* noop */ }
+      // give the dataavailable event a tick
+      await new Promise((r) => setTimeout(r, 250));
+      await finalizeDownloadFromChunks("جزئي");
+      return;
+    }
+    if (recChunksRef.current.length) {
+      await finalizeDownloadFromChunks("جزئي");
+    } else {
+      setError("لا يوجد محتوى بعد — انتظر بدء التشغيل لحظات ثم أعد المحاولة.");
+    }
+  }, [downloadUrl, downloadName, finalizeDownloadFromChunks]);
+
+  // Playback: navigates iframe, animates cursor, plays TTS, AND records a canvas+audio video
+  // so that a real downloadable file is always available.
   const startPlayback = useCallback(async () => {
     setError(null);
     setPlaying(true);
     stopFlagRef.current = false;
+    recChunksRef.current = [];
     try {
       const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       const audioCtx = new AC();
       await audioCtx.resume();
       audioCtxRef.current = audioCtx;
 
+      // Set up canvas + recorder (real downloadable video)
+      const W = Math.round((resolutionRef.current * 16) / 9);
+      const H = resolutionRef.current;
+      const canvas = document.createElement("canvas");
+      canvas.width = W; canvas.height = H;
+      const ctx2d = canvas.getContext("2d");
+      const videoStream = (canvas as HTMLCanvasElement).captureStream(30);
+      const audioDest = audioCtx.createMediaStreamDestination();
+      const combined = new MediaStream([
+        ...videoStream.getVideoTracks(),
+        ...audioDest.stream.getAudioTracks(),
+      ]);
+      const mime = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
+        ? "video/webm;codecs=vp9,opus"
+        : MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")
+        ? "video/webm;codecs=vp8,opus"
+        : "video/webm";
+      recMimeRef.current = mime;
+      const rec = new MediaRecorder(combined, { mimeType: mime, videoBitsPerSecond: 4_000_000, audioBitsPerSecond: 128_000 });
+      recorderRef.current = rec;
+      rec.ondataavailable = (e) => { if (e.data.size > 0) recChunksRef.current.push(e.data); };
+      const stopped = new Promise<void>((res) => { rec.onstop = () => res(); });
+      rec.start(1000);
+
+      // Draw loop — slideshow of current scene
+      drawingRef.current = true;
+      const tick = () => {
+        if (!drawingRef.current) return;
+        if (ctx2d) {
+          ctx2d.fillStyle = "#0a0a0f";
+          ctx2d.fillRect(0, 0, W, H);
+          // Brand bar
+          const g = ctx2d.createLinearGradient(0, 0, W, 0);
+          g.addColorStop(0, "#ec4899"); g.addColorStop(1, "#8b5cf6");
+          ctx2d.fillStyle = g; ctx2d.fillRect(0, 0, W, 6);
+          // Site name
+          ctx2d.fillStyle = "#ffffff";
+          ctx2d.textAlign = "center";
+          ctx2d.font = `bold ${Math.round(H * 0.045)}px sans-serif`;
+          ctx2d.fillText(siteName, W / 2, Math.round(H * 0.12));
+          // Scene title
+          const sc = currentSceneRef.current;
+          ctx2d.font = `bold ${Math.round(H * 0.06)}px sans-serif`;
+          ctx2d.fillStyle = "#fde047";
+          ctx2d.fillText(sc?.pageTitle ?? "…", W / 2, Math.round(H * 0.27));
+          // URL
+          ctx2d.font = `${Math.round(H * 0.022)}px monospace`;
+          ctx2d.fillStyle = "#94a3b8";
+          ctx2d.fillText(sc?.pageUrl ?? "", W / 2, Math.round(H * 0.33));
+          // Narration
+          ctx2d.font = `${Math.round(H * 0.032)}px sans-serif`;
+          ctx2d.fillStyle = "#e5e7eb";
+          ctx2d.textAlign = "center";
+          wrapText(ctx2d, sc?.narration ?? "", W / 2, Math.round(H * 0.45), Math.round(W * 0.82), Math.round(H * 0.05), 9);
+          // Footer
+          ctx2d.font = `${Math.round(H * 0.022)}px sans-serif`;
+          ctx2d.fillStyle = "#64748b";
+          ctx2d.fillText(`${(currentIdxRef.current ?? 0) + 1} / ${scenes.length}`, W / 2, H - 24);
+        }
+        requestAnimationFrame(tick);
+      };
+      tick();
+
       await preloadAudio(audioCtx);
-      if (stopFlagRef.current) { setPlaying(false); return; }
+      if (stopFlagRef.current) { setPlaying(false); drawingRef.current = false; try { rec.stop(); } catch { /* noop */ } return; }
 
-      setPhase("جارٍ التشغيل…");
+      setPhase("جارٍ التشغيل والتسجيل…");
       for (let i = startFromIndex; i < scenes.length; i++) {
-
         if (stopFlagRef.current) break;
         const scene = scenes[i];
+        currentSceneRef.current = scene;
+        currentIdxRef.current = i;
         setCurrentIdx(i); onSceneChange?.(i);
         setLogStatus(i, "active");
         setProgress(30 + (i / scenes.length) * 70);
@@ -512,6 +673,7 @@ export function RecorderStudio({
           try { src.detune.value = voicePitch * 100; } catch { /* unsupported */ }
           src.playbackRate.value = voiceSpeed;
           src.connect(audioCtx.destination);
+          src.connect(audioDest);
           src.start();
         }
         const targets = scene.cursorTargets.length ? scene.cursorTargets : [{ x: 50, y: 50, label: "" }];
@@ -519,16 +681,24 @@ export function RecorderStudio({
         try { src?.stop(); } catch { /* noop */ }
         setLogStatus(i, "done");
       }
+
+      drawingRef.current = false;
+      try { rec.state !== "inactive" && rec.stop(); } catch { /* noop */ }
+      await stopped;
       audioCtx.close();
-      setPhase("اكتمل التشغيل ✓");
+      setPhase("اكتمل التشغيل — تجهيز الملف…");
+      setProgress(95);
+      await finalizeDownloadFromChunks("اكتمل");
       setProgress(100);
     } catch (e) {
       console.error(e);
       setError(e instanceof Error ? e.message : "خطأ غير معروف");
     } finally {
+      drawingRef.current = false;
       setPlaying(false);
     }
-  }, [preloadAudio, scenes, animateCursor, secondsPerPage, voicePitch, voiceSpeed, startFromIndex, onSceneChange]);
+  }, [preloadAudio, scenes, animateCursor, secondsPerPage, voicePitch, voiceSpeed, startFromIndex, onSceneChange, siteName, finalizeDownloadFromChunks]);
+
 
   // Auto-start playback on mount (no screen-share prompt)
   const startedRef = useRef(false);
