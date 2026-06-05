@@ -672,21 +672,12 @@ export function RecorderStudio({
           <Button variant="destructive" onClick={stop} className="gap-2">
             <Square className="h-4 w-4" /> إيقاف التشغيل
           </Button>
-        ) : !recording && !preparing ? (
+        ) : (
           <Button onClick={startPlayback} className="gap-2" variant="secondary">
             <Play className="h-4 w-4" /> {dirHandle ? "بدء / إعادة إنشاء الفيديو" : "اختر المجلد وابدأ"}
           </Button>
-        ) : (
-          <Button variant="destructive" onClick={stop} className="gap-2">
-            <Square className="h-4 w-4" /> إيقاف
-          </Button>
         )}
 
-        {preparing && (
-          <span className="inline-flex items-center gap-2 text-xs text-muted-foreground">
-            <Loader2 className="h-3 w-3 animate-spin" /> تجهيز…
-          </span>
-        )}
         <button
           type="button"
           onClick={handleDownloadClick}
