@@ -17,6 +17,8 @@ interface Props {
   siteName: string;
   effect: Effect;
   secondsPerPage: number;
+  voicePitch?: number;  // semitones, applied via detune (cents)
+  voiceSpeed?: number;  // playbackRate multiplier
 }
 
 type LogEntry = {
