@@ -336,7 +336,7 @@ export function RecorderStudio({
   const stop = useCallback(() => {
     stopFlagRef.current = true;
     try { recorderRef.current?.stop(); } catch { /* noop */ }
-    setRecording(false);
+    setPlaying(false);
     setPlaying(false);
     setPhase("تم الإيقاف");
   }, []);
