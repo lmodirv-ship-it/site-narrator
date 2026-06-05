@@ -380,7 +380,8 @@ export function RecorderStudio({
     const webmBlob = new Blob(chunks, { type: recMimeRef.current });
     const baseName = `${siteName}-tutorial`;
     // Try MP4 conversion; fall back to WebM if it fails.
-    setConvStartAt(Date.now());
+    const convStarted = Date.now();
+    setConvStartAt(convStarted);
     setConvElapsedMs(0);
     setConvProgress(0);
     try {
