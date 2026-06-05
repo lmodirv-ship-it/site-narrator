@@ -345,7 +345,8 @@ export function RecorderStudio({
       if (stopFlagRef.current) { setPlaying(false); return; }
 
       setPhase("جارٍ التشغيل…");
-      for (let i = 0; i < scenes.length; i++) {
+      for (let i = startFromIndex; i < scenes.length; i++) {
+
         if (stopFlagRef.current) break;
         const scene = scenes[i];
         setCurrentIdx(i); onSceneChange?.(i);
