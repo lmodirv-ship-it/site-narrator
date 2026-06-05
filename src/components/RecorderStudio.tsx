@@ -403,15 +403,25 @@ export function RecorderStudio({
     <div className="space-y-4">
       {/* Top controls */}
       <div className="flex flex-wrap items-center gap-2">
-        {!recording && !preparing ? (
-          <Button onClick={startRecording} className="gap-2">
-            <Play className="h-4 w-4" /> ابدأ التسجيل (شارك هذا التبويب)
+        {playing ? (
+          <Button variant="destructive" onClick={stop} className="gap-2">
+            <Square className="h-4 w-4" /> إيقاف التشغيل
           </Button>
+        ) : !recording && !preparing ? (
+          <>
+            <Button onClick={startPlayback} className="gap-2" variant="secondary">
+              <Play className="h-4 w-4" /> إعادة التشغيل
+            </Button>
+            <Button onClick={startRecording} className="gap-2">
+              <FileVideo className="h-4 w-4" /> تسجيل MP4 (يطلب مشاركة التبويب)
+            </Button>
+          </>
         ) : (
           <Button variant="destructive" onClick={stop} className="gap-2">
             <Square className="h-4 w-4" /> إيقاف
           </Button>
         )}
+
         {preparing && (
           <span className="inline-flex items-center gap-2 text-xs text-muted-foreground">
             <Loader2 className="h-3 w-3 animate-spin" /> تجهيز…
