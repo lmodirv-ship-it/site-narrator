@@ -99,8 +99,8 @@ export function RecorderStudio({
   );
   const [phase, setPhase] = useState("");
   const [progress, setProgress] = useState(0);
-  const [recording, setRecording] = useState(false);
-  const [preparing, setPreparing] = useState(false);
+
+
   const [playing, setPlaying] = useState(false);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [downloadName, setDownloadName] = useState("tutorial.mp4");
