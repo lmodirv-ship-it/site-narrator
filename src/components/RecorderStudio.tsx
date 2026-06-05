@@ -581,6 +581,39 @@ export function RecorderStudio({
           </span>
         </div>
 
+        {/* Resolution / quality selector */}
+        <div className="flex items-center gap-2">
+          <FileVideo className="h-4 w-4 text-brand" />
+          <span className="text-xs font-semibold">جودة الفيديو:</span>
+          <div className="inline-flex rounded-lg border border-border/60 overflow-hidden">
+            {([
+              { v: 480, label: "480p", hint: "أصغر ملف" },
+              { v: 720, label: "720p", hint: "متوازن" },
+              { v: 1080, label: "1080p", hint: "عالي الجودة" },
+              { v: 1440, label: "1440p", hint: "أقصى دقة" },
+            ] as const).map((opt) => (
+              <button
+                key={opt.v}
+                type="button"
+                onClick={() => setResolution(opt.v)}
+                title={opt.hint}
+                className={`px-2.5 py-1 text-xs font-semibold transition ${
+                  resolution === opt.v
+                    ? "bg-brand text-white"
+                    : "bg-card/40 text-muted-foreground hover:text-foreground hover:bg-card"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          <span className="text-[11px] text-muted-foreground">
+            {resolution >= 1080 ? "أبطأ، حجم أكبر" : resolution <= 480 ? "أسرع، حجم أصغر" : "متوازن"}
+          </span>
+        </div>
+
+
+
         <div className="flex items-center gap-2 ms-auto">
           <Button
             size="sm"
