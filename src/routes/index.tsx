@@ -8,9 +8,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { RecorderStudio } from "@/components/RecorderStudio";
+import { Particles } from "@/components/Particles";
 import { generateTutorial, type GenerateResult } from "@/lib/tutorial.functions";
 import { MY_LOVABLE_PROJECTS } from "@/lib/my-projects";
 import { VOICE_PRESETS } from "@/lib/voices";
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
