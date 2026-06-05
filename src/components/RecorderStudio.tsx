@@ -688,6 +688,7 @@ export function RecorderStudio({
 
         if (iframeRef.current && (i > 0 || iframeRef.current.src !== scene.pageUrl)) {
           iframeRef.current.src = scene.pageUrl;
+          setLastUrl(scene.pageUrl);
           await new Promise<void>((resolve) => {
             const f = iframeRef.current!;
             let done = false;
@@ -695,6 +696,8 @@ export function RecorderStudio({
             f.addEventListener("load", onLoad, { once: true });
             setTimeout(() => { if (!done) { done = true; resolve(); } }, 4500);
           });
+        } else {
+          setLastUrl(scene.pageUrl);
         }
         await new Promise((r) => setTimeout(r, 300));
 
@@ -708,8 +711,11 @@ export function RecorderStudio({
           src.buffer = buf;
           try { src.detune.value = voicePitch * 100; } catch { /* unsupported */ }
           src.playbackRate.value = voiceSpeed;
-          src.connect(audioCtx.destination);
-          src.connect(audioDest);
+          // Voice coloring chain — per-preset EQ so timbre actually changes.
+          const chain = buildVoiceChain(audioCtx, voicePreset);
+          src.connect(chain.input);
+          chain.output.connect(audioCtx.destination);
+          chain.output.connect(audioDest);
           src.start();
         }
         const targets = scene.cursorTargets.length ? scene.cursorTargets : [{ x: 50, y: 50, label: "" }];
