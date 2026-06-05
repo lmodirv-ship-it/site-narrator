@@ -107,7 +107,7 @@ function Index() {
 
         {/* Form — hidden once generation completes */}
         {!result && (
-        <Card className="neon-card border-0 shadow-xl animate-rise" style={{ animationDelay: ".15s" }}>
+        <Card className="neon-card hover-tilt border-0 shadow-xl animate-rise" style={{ animationDelay: ".15s" }}>
 
           <CardContent className="p-4 sm:p-6">
             <form onSubmit={onSubmit} className="grid gap-4 md:grid-cols-3">
@@ -227,7 +227,7 @@ function Index() {
 
         {/* Studio */}
         {result && (
-          <Card className="neon-card border-0 shadow-xl animate-rise">
+          <Card className="neon-card hover-tilt border-0 shadow-xl animate-rise">
             <CardContent className="p-4 sm:p-6">
               <div className="flex items-center gap-2 mb-4">
                 <div className="h-9 w-9 rounded-lg btn-glow grid place-items-center">
