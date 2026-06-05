@@ -74,7 +74,11 @@ export function RecorderStudio({
   const [memUsed, setMemUsed] = useState<number>(0);
   const [memLimit, setMemLimit] = useState<number>(0);
   const [dirHandle, setDirHandle] = useState<FileSystemDirectoryHandle | null>(null);
+  const [resolution, setResolution] = useState<480 | 720 | 1080 | 1440>(1080);
+  const resolutionRef = useRef(resolution);
+  useEffect(() => { resolutionRef.current = resolution; }, [resolution]);
   const memBudgetRef = useRef(memBudget);
+
   useEffect(() => { memBudgetRef.current = memBudget; }, [memBudget]);
 
   useEffect(() => {
@@ -261,8 +265,11 @@ export function RecorderStudio({
 
       // 2) Ask user to share this tab
       setPhase("اختر هذا التبويب لمشاركته (Chrome → This Tab) ثم اضغط مشاركة");
+      const targetH = resolutionRef.current;
+      const targetW = Math.round((targetH * 16) / 9);
       const displayStream = await navigator.mediaDevices.getDisplayMedia({
-        video: { frameRate: 30 } as MediaTrackConstraints,
+        video: { frameRate: 30, width: { ideal: targetW }, height: { ideal: targetH } } as MediaTrackConstraints,
+
         audio: false,
       });
 
@@ -377,11 +384,13 @@ export function RecorderStudio({
         await ffmpeg.writeFile("in.webm", await fetchFile(webmBlob));
         await ffmpeg.exec([
           "-i", "in.webm",
+          "-vf", `scale=-2:${resolutionRef.current}`,
           "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
           "-c:a", "aac", "-b:a", "192k",
           "-movflags", "+faststart",
           "out.mp4",
         ]);
+
         const out = (await ffmpeg.readFile("out.mp4")) as Uint8Array;
         const ab = out.buffer.slice(out.byteOffset, out.byteOffset + out.byteLength) as ArrayBuffer;
         const mp4Blob = new Blob([ab], { type: "video/mp4" });
@@ -571,6 +580,39 @@ export function RecorderStudio({
             {memUsed > 0 ? `الفعلي: ${memUsed}${memLimit ? ` / ${memLimit}` : ""} MB` : "غير متاح في هذا المتصفح"}
           </span>
         </div>
+
+        {/* Resolution / quality selector */}
+        <div className="flex items-center gap-2">
+          <FileVideo className="h-4 w-4 text-brand" />
+          <span className="text-xs font-semibold">جودة الفيديو:</span>
+          <div className="inline-flex rounded-lg border border-border/60 overflow-hidden">
+            {([
+              { v: 480, label: "480p", hint: "أصغر ملف" },
+              { v: 720, label: "720p", hint: "متوازن" },
+              { v: 1080, label: "1080p", hint: "عالي الجودة" },
+              { v: 1440, label: "1440p", hint: "أقصى دقة" },
+            ] as const).map((opt) => (
+              <button
+                key={opt.v}
+                type="button"
+                onClick={() => setResolution(opt.v)}
+                title={opt.hint}
+                className={`px-2.5 py-1 text-xs font-semibold transition ${
+                  resolution === opt.v
+                    ? "bg-brand text-white"
+                    : "bg-card/40 text-muted-foreground hover:text-foreground hover:bg-card"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          <span className="text-[11px] text-muted-foreground">
+            {resolution >= 1080 ? "أبطأ، حجم أكبر" : resolution <= 480 ? "أسرع، حجم أصغر" : "متوازن"}
+          </span>
+        </div>
+
+
 
         <div className="flex items-center gap-2 ms-auto">
           <Button
