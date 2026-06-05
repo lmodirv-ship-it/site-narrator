@@ -221,7 +221,7 @@ export function RecorderStudio({
       for (let i = 0; i < scenes.length; i++) {
         if (stopFlagRef.current) break;
         const scene = scenes[i];
-        setCurrentIdx(i);
+        setCurrentIdx(i); onSceneChange?.(i);
         setLogStatus(i, "active");
         setProgress(30 + (i / scenes.length) * 60);
 
@@ -347,7 +347,7 @@ export function RecorderStudio({
       for (let i = 0; i < scenes.length; i++) {
         if (stopFlagRef.current) break;
         const scene = scenes[i];
-        setCurrentIdx(i);
+        setCurrentIdx(i); onSceneChange?.(i);
         setLogStatus(i, "active");
         setProgress(30 + (i / scenes.length) * 70);
 
