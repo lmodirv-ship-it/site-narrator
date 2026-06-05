@@ -970,7 +970,7 @@ export function RecorderStudio({
         </div>
       </div>
 
-      {(phase || progress > 0 || recStartAt !== null) && (
+      {(phase || progress > 0 || recStartAt !== null || convStartAt !== null || convPhase) && (
         <div className="space-y-2">
           {(recStartAt !== null || recBytes > 0) && (
             <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border/60 bg-card/60 px-3 py-2 text-xs">
