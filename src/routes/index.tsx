@@ -36,7 +36,7 @@ function Index() {
   const generate = useServerFn(generateTutorial);
   const [url, setUrl] = useState("https://lovable.dev");
   const [siteName, setSiteName] = useState("Lovable");
-  const [pages, setPages] = useState(5);
+  const [pages, setPages] = useState<number>(20);
   const [quality, setQuality] = useState<Quality>("1080");
   const [language, setLanguage] = useState("ar");
   const [voice, setVoice] = useState<Voice>("female");
@@ -59,10 +59,11 @@ function Index() {
         data: { url, siteName, language, level: pagesToLevel(pages) },
       });
       // trim to user-requested page count
+      const limit = pages >= 9999 ? r.scenes.length : pages;
       const trimmed: GenerateResult = {
         ...r,
-        scenes: r.scenes.slice(0, pages),
-        totalSeconds: r.scenes.slice(0, pages).reduce((a, s) => a + Math.max(6, s.narration.split(/\s+/).length * 0.42), 0),
+        scenes: r.scenes.slice(0, limit),
+        totalSeconds: r.scenes.slice(0, limit).reduce((a, s) => a + Math.max(6, s.narration.split(/\s+/).length * 0.42), 0),
       };
       setResult(trimmed);
       setStage("جاهز — اضغط ابدأ التسجيل");
@@ -124,8 +125,13 @@ function Index() {
               <Field icon={<Sparkles className="h-4 w-4" />} label="اسم الموقع">
                 <Input type="text" required maxLength={100} value={siteName} onChange={(e) => setSiteName(e.target.value)} className="h-10" />
               </Field>
-              <Field icon={<Hash className="h-4 w-4" />} label={`عدد الصفحات (${pages})`}>
-                <input type="range" min={1} max={50} value={pages} onChange={(e) => setPages(Number(e.target.value))} className="w-full accent-[oklch(0.68_0.21_295)]" />
+              <Field icon={<Hash className="h-4 w-4" />} label="عدد الصفحات">
+                <select className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 text-sm" value={pages} onChange={(e) => setPages(Number(e.target.value))}>
+                  <option value={20}>20 صفحة</option>
+                  <option value={50}>50 صفحة</option>
+                  <option value={100}>100 صفحة</option>
+                  <option value={9999}>الموقع كاملاً</option>
+                </select>
               </Field>
 
               <Field icon={<Gauge className="h-4 w-4" />} label="جودة الفيديو">
