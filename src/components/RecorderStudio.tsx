@@ -48,6 +48,7 @@ export function RecorderStudio({
   const recMimeRef = useRef<string>("video/webm");
   const drawingRef = useRef<boolean>(false);
   const currentSceneRef = useRef<Scene | null>(null);
+  const currentIdxRef = useRef<number>(0);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const stopFlagRef = useRef(false);
   const audioBuffersRef = useRef<Map<number, AudioBuffer>>(new Map());
