@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePersistentState } from "@/hooks/use-persistent-state";
 
 import {
   Sparkles, Globe, Languages, Wand2, Loader2, Film,
-  Mic, MousePointer2, AlertCircle, Gauge, Hash, Palette, ArrowRight, Music2,
+  Mic, MousePointer2, AlertCircle, Gauge, Hash, Palette, ArrowRight, Music2, Play, Square,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,8 +14,10 @@ import { Particles } from "@/components/Particles";
 import { GenerationOverlay } from "@/components/GenerationOverlay";
 
 import { generateTutorial, type GenerateResult } from "@/lib/tutorial.functions";
+import { synthesizeSpeech } from "@/lib/tts.functions";
 import { MY_LOVABLE_PROJECTS } from "@/lib/my-projects";
 import { VOICE_PRESETS } from "@/lib/voices";
+
 
 
 export const Route = createFileRoute("/")({
@@ -40,6 +42,7 @@ function pagesToLevel(n: number): Level {
 
 function Index() {
   const generate = useServerFn(generateTutorial);
+  const ttsSynth = useServerFn(synthesizeSpeech);
   const [url, setUrl] = usePersistentState("hn:url", "https://lovable.dev");
   const [siteName, setSiteName] = usePersistentState("hn:siteName", "Lovable");
   const [pages, setPages] = usePersistentState<number>("hn:pages", 20);
@@ -61,6 +64,50 @@ function Index() {
     url: string; siteName: string; language: string; pages: number; startedAt: number;
   } | null>("hn:pendingJob", null);
   const [resumedBanner, setResumedBanner] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
+  const previewRef = useRef<{ ctx: AudioContext; src: AudioBufferSourceNode } | null>(null);
+
+  const stopPreview = () => {
+    try { previewRef.current?.src.stop(); } catch { /* noop */ }
+    try { void previewRef.current?.ctx.close(); } catch { /* noop */ }
+    previewRef.current = null;
+    setPreviewing(false);
+  };
+
+  const playPreview = async () => {
+    if (previewing) { stopPreview(); return; }
+    setPreviewing(true);
+    try {
+      const samples: Record<string, string> = {
+        ar: "مرحبا، هذه عينة صوتية قصيرة لاختبار الصوت المحدد.",
+        en: "Hello, this is a short voice sample to preview the selected voice.",
+        fr: "Bonjour, ceci est un court échantillon vocal pour prévisualiser la voix.",
+        es: "Hola, esta es una muestra corta de voz para previsualizar.",
+        de: "Hallo, dies ist eine kurze Sprachprobe zur Vorschau.",
+      };
+      const langKey = voicePreset.lang.split("-")[0];
+      const text = samples[langKey] ?? samples.en;
+      const res = await ttsSynth({ data: { text, lang: voicePreset.lang, voiceId: voicePreset.id } });
+      const bin = atob(res.base64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const ctx = new AudioContext();
+      const buf = await ctx.decodeAudioData(bytes.buffer);
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.detune.value = pitch * 100;
+      src.playbackRate.value = speed;
+      src.connect(ctx.destination);
+      src.onended = () => stopPreview();
+      previewRef.current = { ctx, src };
+      src.start();
+    } catch (e) {
+      console.error(e);
+      setError(e instanceof Error ? e.message : "تعذر تشغيل العينة");
+      setPreviewing(false);
+    }
+  };
+
 
 
   const runGeneration = async (u: string, name: string, lang: string, p: number) => {
@@ -217,15 +264,27 @@ function Index() {
               </Field>
 
               <Field icon={<Mic className="h-4 w-4" />} label="الصوت (20 خياراً)">
-                <select className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 text-sm" value={voiceId} onChange={(e) => {
-                  const v = VOICE_PRESETS.find((x) => x.id === e.target.value);
-                  if (v) { setVoiceId(v.id); setPitch(v.pitch); setSpeed(v.speed); setLanguage(v.lang.split("-")[0]); }
-                }}>
-                  {VOICE_PRESETS.map((v) => (
-                    <option key={v.id} value={v.id}>{v.name}</option>
-                  ))}
-                </select>
+                <div className="flex gap-2">
+                  <select className="flex h-10 flex-1 min-w-0 rounded-md border border-input bg-transparent px-3 text-sm" value={voiceId} onChange={(e) => {
+                    const v = VOICE_PRESETS.find((x) => x.id === e.target.value);
+                    if (v) { setVoiceId(v.id); setPitch(v.pitch); setSpeed(v.speed); setLanguage(v.lang.split("-")[0]); }
+                  }}>
+                    {VOICE_PRESETS.map((v) => (
+                      <option key={v.id} value={v.id}>{v.name}</option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={playPreview}
+                    title={previewing ? "إيقاف العينة" : "معاينة الصوت"}
+                    aria-label={previewing ? "إيقاف العينة" : "معاينة الصوت"}
+                    className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-brand/40 bg-brand/10 text-brand hover:bg-brand/20 hover:shadow-[0_0_18px_oklch(0.72_0.32_350/.5)] transition"
+                  >
+                    {previewing ? <Square className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                  </button>
+                </div>
               </Field>
+
 
               <Field icon={<Music2 className="h-4 w-4" />} label={`الرنين / Pitch (${pitch > 0 ? "+" : ""}${pitch})`}>
                 <input type="range" min={-12} max={12} step={1} value={pitch} onChange={(e) => setPitch(Number(e.target.value))} className="w-full accent-[oklch(0.68_0.21_295)]" />
