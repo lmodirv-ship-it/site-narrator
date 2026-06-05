@@ -532,7 +532,7 @@ export function RecorderStudio({
   };
 
   // Build a downloadable blob from whatever has been captured so far (and convert to MP4 best-effort).
-  const finalizeDownloadFromChunks = useCallback(async (label: string) => {
+  const finalizeDownloadFromChunks = useCallback(async (label: string, autoDownload = false) => {
     if (snapshotSavingRef.current) return;
     const chunks = recChunksRef.current;
     if (!chunks.length) return;
@@ -571,16 +571,28 @@ export function RecorderStudio({
       const name = `${baseName}.mp4`;
       const saved = await saveToFolder(mp4Blob, name);
       if (downloadUrl) URL.revokeObjectURL(downloadUrl);
-      setDownloadUrl(URL.createObjectURL(mp4Blob));
+      const url = URL.createObjectURL(mp4Blob);
+      setDownloadUrl(url);
       setDownloadName(name);
+      if (autoDownload) {
+        const a = document.createElement("a");
+        a.href = url; a.download = name;
+        document.body.appendChild(a); a.click(); a.remove();
+      }
       setPhase(`${label} — ${saved ? "تم حفظ نسخة في المجلد" : "جاهز للتحميل"} ✓ MP4`);
     } catch (e) {
       console.error("ffmpeg failed", e);
       const name = `${baseName}.webm`;
       const saved = await saveToFolder(webmBlob, name);
       if (downloadUrl) URL.revokeObjectURL(downloadUrl);
-      setDownloadUrl(URL.createObjectURL(webmBlob));
+      const url = URL.createObjectURL(webmBlob);
+      setDownloadUrl(url);
       setDownloadName(name);
+      if (autoDownload) {
+        const a = document.createElement("a");
+        a.href = url; a.download = name;
+        document.body.appendChild(a); a.click(); a.remove();
+      }
       setPhase(`${label} — ${saved ? "تم حفظ نسخة في المجلد" : "جاهز للتحميل"} ✓ WebM`);
     } finally {
       snapshotSavingRef.current = false;
