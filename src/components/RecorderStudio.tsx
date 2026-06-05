@@ -275,9 +275,15 @@ export function RecorderStudio({
         ? "video/webm;codecs=vp9,opus"
         : "video/webm";
       const chunks: Blob[] = [];
+      // Bitrate scales with memory budget (more RAM → higher quality)
+      const bps = memBudgetRef.current >= 1024 ? 12_000_000
+        : memBudgetRef.current >= 512 ? 8_000_000
+        : memBudgetRef.current >= 256 ? 5_000_000
+        : 3_000_000;
       const rec = new MediaRecorder(combined, {
-        mimeType: mime, videoBitsPerSecond: 8_000_000, audioBitsPerSecond: 128_000,
+        mimeType: mime, videoBitsPerSecond: bps, audioBitsPerSecond: 128_000,
       });
+
       recorderRef.current = rec;
       rec.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
       const stopped = new Promise<void>((res) => { rec.onstop = () => res(); });
