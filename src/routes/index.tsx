@@ -230,19 +230,28 @@ function Index() {
                 <div className="h-9 w-9 rounded-lg btn-glow grid place-items-center">
                   <Film className="h-4 w-4 text-white" />
                 </div>
-                <div>
+                <div className="flex-1">
                   <h2 className="font-semibold text-sm sm:text-base">استوديو التسجيل</h2>
                   <p className="text-xs text-muted-foreground">
-                    {result.scenes.length} صفحة · جودة {quality}p · لغة {language.toUpperCase()}
+                    {result.scenes.length} صفحة · جودة {quality}p · {voicePreset.name}
                   </p>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => { setResult(null); setStage(""); }}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card/60 px-3 py-1.5 text-xs hover:bg-card transition"
+                >
+                  <ArrowRight className="h-3.5 w-3.5" /> رجوع للإعدادات
+                </button>
               </div>
               <RecorderStudio
                 scenes={result.scenes}
-                language={language}
+                language={voicePreset.lang}
                 siteName={siteName}
                 effect={effect}
                 secondsPerPage={secondsPerPage}
+                voicePitch={pitch}
+                voiceSpeed={speed}
               />
             </CardContent>
           </Card>
