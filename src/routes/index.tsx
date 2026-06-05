@@ -145,7 +145,24 @@ function Index() {
           </p>
         </header>
 
+        {resumedBanner && (
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-brand/40 bg-brand/10 px-4 py-3 text-sm animate-rise shadow-[0_0_24px_-6px_oklch(0.72_0.32_350/.55)]">
+            <span>
+              تم استئناف جلستك السابقة تلقائياً
+              {result && resumeFrom > 0 && ` — سيكمل التشغيل من المشهد ${resumeFrom + 1}`}
+            </span>
+            <button
+              type="button"
+              onClick={resetSession}
+              className="rounded-md border border-border bg-card/60 px-3 py-1 text-xs hover:bg-card transition"
+            >
+              بدء جديد
+            </button>
+          </div>
+        )}
+
         {/* Form — hidden once generation completes */}
+
         {!result && (
         <Card className="neon-card hover-tilt border-0 shadow-xl animate-rise" style={{ animationDelay: ".15s" }}>
 
