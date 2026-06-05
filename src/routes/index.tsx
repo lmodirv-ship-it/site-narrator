@@ -1,15 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Sparkles, Globe, Languages, Wand2, Loader2, Film,
-  Mic, MousePointer2, AlertCircle, Gauge, Hash, Palette,
+  Mic, MousePointer2, AlertCircle, Gauge, Hash, Palette, ArrowRight, Music2,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { RecorderStudio } from "@/components/RecorderStudio";
 import { generateTutorial, type GenerateResult } from "@/lib/tutorial.functions";
 import { MY_LOVABLE_PROJECTS } from "@/lib/my-projects";
+import { VOICE_PRESETS } from "@/lib/voices";
 
 export const Route = createFileRoute("/")({
   head: () => ({
