@@ -541,6 +541,57 @@ export function RecorderStudio({
         </span>
       </div>
 
+      {/* Memory budget + Folder picker */}
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border/60 bg-card/40 backdrop-blur p-3">
+        <div className="flex items-center gap-2">
+          <Cpu className="h-4 w-4 text-brand" />
+          <span className="text-xs font-semibold">ذاكرة الحاسوب:</span>
+          <Button
+            size="icon"
+            variant="outline"
+            className="h-7 w-7"
+            onClick={() => setMemBudget((v) => Math.max(128, v - 128))}
+            title="إنقاص استهلاك الذاكرة (أبطأ)"
+          >
+            <Minus className="h-3 w-3" />
+          </Button>
+          <span className="tabular-nums text-sm font-bold text-brand min-w-[64px] text-center" dir="ltr">
+            {memBudget} MB
+          </span>
+          <Button
+            size="icon"
+            variant="outline"
+            className="h-7 w-7"
+            onClick={() => setMemBudget((v) => Math.min(4096, v + 128))}
+            title="زيادة استهلاك الذاكرة (أسرع)"
+          >
+            <Plus className="h-3 w-3" />
+          </Button>
+          <span className="text-[11px] text-muted-foreground" dir="ltr">
+            {memUsed > 0 ? `الفعلي: ${memUsed}${memLimit ? ` / ${memLimit}` : ""} MB` : "غير متاح في هذا المتصفح"}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2 ms-auto">
+          <Button
+            size="sm"
+            variant={dirHandle ? "secondary" : "outline"}
+            onClick={pickFolder}
+            className="gap-2"
+            title="اختر مجلداً على الحاسوب لحفظ الفيديو وملف المعلومات"
+          >
+            {dirHandle ? <FolderCheck className="h-4 w-4 text-green-500" /> : <FolderOpen className="h-4 w-4" />}
+            {dirHandle ? `محفوظ في: ${dirHandle.name}` : "اختيار مجلد الحفظ على الحاسوب"}
+          </Button>
+          {dirHandle && (
+            <Button size="sm" variant="ghost" onClick={() => setDirHandle(null)} className="text-xs">
+              إلغاء
+            </Button>
+          )}
+        </div>
+      </div>
+
+
       {/* Main: iframe stage 70% + analysis 30% on desktop */}
       <div className="grid gap-4 lg:grid-cols-[70%_30%]">
         {/* Stage */}
