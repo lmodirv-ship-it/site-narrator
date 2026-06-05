@@ -264,15 +264,27 @@ function Index() {
               </Field>
 
               <Field icon={<Mic className="h-4 w-4" />} label="الصوت (20 خياراً)">
-                <select className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 text-sm" value={voiceId} onChange={(e) => {
-                  const v = VOICE_PRESETS.find((x) => x.id === e.target.value);
-                  if (v) { setVoiceId(v.id); setPitch(v.pitch); setSpeed(v.speed); setLanguage(v.lang.split("-")[0]); }
-                }}>
-                  {VOICE_PRESETS.map((v) => (
-                    <option key={v.id} value={v.id}>{v.name}</option>
-                  ))}
-                </select>
+                <div className="flex gap-2">
+                  <select className="flex h-10 flex-1 min-w-0 rounded-md border border-input bg-transparent px-3 text-sm" value={voiceId} onChange={(e) => {
+                    const v = VOICE_PRESETS.find((x) => x.id === e.target.value);
+                    if (v) { setVoiceId(v.id); setPitch(v.pitch); setSpeed(v.speed); setLanguage(v.lang.split("-")[0]); }
+                  }}>
+                    {VOICE_PRESETS.map((v) => (
+                      <option key={v.id} value={v.id}>{v.name}</option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={playPreview}
+                    title={previewing ? "إيقاف العينة" : "معاينة الصوت"}
+                    aria-label={previewing ? "إيقاف العينة" : "معاينة الصوت"}
+                    className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-brand/40 bg-brand/10 text-brand hover:bg-brand/20 hover:shadow-[0_0_18px_oklch(0.72_0.32_350/.5)] transition"
+                  >
+                    {previewing ? <Square className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                  </button>
+                </div>
               </Field>
+
 
               <Field icon={<Music2 className="h-4 w-4" />} label={`الرنين / Pitch (${pitch > 0 ? "+" : ""}${pitch})`}>
                 <input type="range" min={-12} max={12} step={1} value={pitch} onChange={(e) => setPitch(Number(e.target.value))} className="w-full accent-[oklch(0.68_0.21_295)]" />
