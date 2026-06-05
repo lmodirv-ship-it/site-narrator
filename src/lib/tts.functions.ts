@@ -8,7 +8,6 @@ const InputSchema = z.object({
 });
 
 function bytesToBase64(bytes: Uint8Array): string {
-  // @ts-expect-error Buffer is available via nodejs_compat
   return Buffer.from(bytes).toString("base64");
 }
 
