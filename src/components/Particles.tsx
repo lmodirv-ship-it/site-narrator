@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useState } from "react";
 
 const COLORS = [
   "oklch(0.72 0.32 350)", // pink
@@ -7,9 +7,22 @@ const COLORS = [
   "oklch(0.88 0.27 135)", // lime
 ];
 
+type Particle = {
+  id: number;
+  left: string;
+  size: string;
+  delay: string;
+  duration: string;
+  color: string;
+  opacity: number;
+};
+
 export function Particles({ count = 28 }: { count?: number }) {
-  const items = useMemo(
-    () =>
+  // Generate on the client only to avoid SSR/CSR hydration mismatches.
+  const [items, setItems] = useState<Particle[]>([]);
+
+  useEffect(() => {
+    setItems(
       Array.from({ length: count }).map((_, i) => {
         const size = Math.random() * 4 + 2;
         return {
@@ -22,8 +35,8 @@ export function Particles({ count = 28 }: { count?: number }) {
           opacity: 0.5 + Math.random() * 0.5,
         };
       }),
-    [count],
-  );
+    );
+  }, [count]);
 
   return (
     <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden" aria-hidden>
