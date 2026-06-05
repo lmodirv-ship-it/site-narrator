@@ -69,6 +69,75 @@ export function RecorderStudio({
   const [currentIdx, setCurrentIdx] = useState(0);
   const [iframeBlocked, setIframeBlocked] = useState(false);
 
+  // Real memory controls (Chromium exposes performance.memory)
+  const [memBudget, setMemBudget] = useState<number>(512); // MB target
+  const [memUsed, setMemUsed] = useState<number>(0);
+  const [memLimit, setMemLimit] = useState<number>(0);
+  const [dirHandle, setDirHandle] = useState<FileSystemDirectoryHandle | null>(null);
+  const memBudgetRef = useRef(memBudget);
+  useEffect(() => { memBudgetRef.current = memBudget; }, [memBudget]);
+
+  useEffect(() => {
+    const read = () => {
+      const m = (performance as unknown as { memory?: { usedJSHeapSize: number; jsHeapSizeLimit: number } }).memory;
+      if (m) {
+        setMemUsed(Math.round(m.usedJSHeapSize / 1048576));
+        setMemLimit(Math.round(m.jsHeapSizeLimit / 1048576));
+      }
+    };
+    read();
+    const t = setInterval(read, 1500);
+    return () => clearInterval(t);
+  }, []);
+
+  const pickFolder = useCallback(async () => {
+    try {
+      const picker = (window as unknown as { showDirectoryPicker?: (o?: { mode?: string }) => Promise<FileSystemDirectoryHandle> }).showDirectoryPicker;
+      if (!picker) {
+        setError("متصفحك لا يدعم اختيار مجلد محلي. استخدم Chrome/Edge على الحاسوب.");
+        return;
+      }
+      const h = await picker({ mode: "readwrite" });
+      setDirHandle(h);
+    } catch (e) {
+      if ((e as { name?: string })?.name !== "AbortError") {
+        setError("تعذّر فتح المجلد");
+      }
+    }
+  }, []);
+
+  const saveToFolder = useCallback(async (videoBlob: Blob, name: string) => {
+    if (!dirHandle) return;
+    try {
+      const fh = await dirHandle.getFileHandle(name, { create: true });
+      const w = await fh.createWritable();
+      await w.write(videoBlob);
+      await w.close();
+      const infoName = name.replace(/\.[^.]+$/, "") + "-info.txt";
+      const info = [
+        `العنوان: ${name}`,
+        `الموقع: ${siteName}`,
+        `اللغة: ${language}`,
+        `عدد المشاهد: ${scenes.length}`,
+        `تاريخ الإنشاء: ${new Date().toLocaleString()}`,
+        ``,
+        `— تعريف بالموقع —`,
+        scenes[0]?.narration ?? "",
+        ``,
+        `— المشاهد —`,
+        ...scenes.map((s, i) => `${i + 1}. ${s.pageTitle}\n   ${s.pageUrl}\n   ${s.narration}\n`),
+      ].join("\n");
+      const ih = await dirHandle.getFileHandle(infoName, { create: true });
+      const iw = await ih.createWritable();
+      await iw.write(new Blob([info], { type: "text/plain;charset=utf-8" }));
+      await iw.close();
+    } catch (e) {
+      console.error("save to folder failed", e);
+      setError("تعذّر الحفظ في المجلد المحدد");
+    }
+  }, [dirHandle, scenes, siteName, language]);
+
+
 
   const synthesize = useServerFn(synthesizeSpeech);
 
