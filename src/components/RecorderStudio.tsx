@@ -112,15 +112,27 @@ export function RecorderStudio({
   const pickFolder = useCallback(async () => {
     try {
       const picker = (window as unknown as { showDirectoryPicker?: (o?: { mode?: string }) => Promise<FileSystemDirectoryHandle> }).showDirectoryPicker;
+      const inIframe = window.self !== window.top;
       if (!picker) {
-        setError("متصفحك لا يدعم اختيار مجلد محلي. استخدم Chrome/Edge على الحاسوب.");
+        setError("متصفحك لا يدعم اختيار مجلد محلي. استخدم Chrome / Edge على الحاسوب.");
+        return;
+      }
+      if (inIframe) {
+        const openUrl = window.location.href;
+        setError(`اختيار المجلد محظور داخل معاينة Lovable. افتح التطبيق في تبويب مستقل ثم اضغط الزر مرة أخرى: ${openUrl}`);
+        try { window.open(openUrl, "_blank", "noopener"); } catch { /* noop */ }
         return;
       }
       const h = await picker({ mode: "readwrite" });
       setDirHandle(h);
+      setError(null);
     } catch (e) {
-      if ((e as { name?: string })?.name !== "AbortError") {
-        setError("تعذّر فتح المجلد");
+      const name = (e as { name?: string })?.name;
+      if (name === "AbortError") return;
+      if (name === "SecurityError") {
+        setError("اختيار المجلد محظور هنا (سياسة أمان). افتح التطبيق في تبويب مستقل.");
+      } else {
+        setError("تعذّر فتح المجلد: " + ((e as Error)?.message ?? "خطأ غير معروف"));
       }
     }
   }, []);
