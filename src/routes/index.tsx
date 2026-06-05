@@ -73,23 +73,23 @@ function Index() {
         <div className="absolute top-40 -right-32 h-96 w-96 rounded-full bg-brand-2/20 blur-3xl animate-float" style={{ animationDelay: "1s" }} />
       </div>
 
-      <div className="max-w-5xl mx-auto p-6 space-y-8">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8">
         {/* Hero */}
-        <header className="pt-8 text-center space-y-4">
-          <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-4 py-1.5 text-xs backdrop-blur">
-            <Sparkles className="h-3.5 w-3.5 text-brand" />
-            <span className="text-muted-foreground">مدعوم بـ ElevenLabs + Firecrawl + Gemini</span>
+        <header className="pt-4 sm:pt-8 text-center space-y-3 sm:space-y-4">
+          <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 sm:px-4 py-1.5 text-[11px] sm:text-xs backdrop-blur max-w-full">
+            <Sparkles className="h-3.5 w-3.5 text-brand shrink-0" />
+            <span className="text-muted-foreground truncate">مدعوم بـ ElevenLabs + Firecrawl + Gemini</span>
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight leading-tight">
             <span className="bg-gradient-to-r from-brand via-brand-2 to-brand bg-clip-text text-transparent">
               HN Tutorial Video Maker
             </span>
           </h1>
-          <p className="max-w-2xl mx-auto text-muted-foreground">
+          <p className="max-w-2xl mx-auto text-sm sm:text-base text-muted-foreground px-2">
             ضَع رابط أي موقع — نولّد لك فيديو شرح احترافي بصوت بشري ومؤشر فأرة متحرك،
             جاهز للتحميل بصيغة MP4 حتى 4K.
           </p>
-          <div className="flex flex-wrap items-center justify-center gap-3 pt-2 text-xs text-muted-foreground">
+          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 pt-2 text-[11px] sm:text-xs text-muted-foreground">
             <Badge icon={<Film className="h-3 w-3" />}>MP4 / 4K</Badge>
             <Badge icon={<Mic className="h-3 w-3" />}>صوت بشري</Badge>
             <Badge icon={<MousePointer2 className="h-3 w-3" />}>مؤشر متحرك</Badge>
@@ -100,8 +100,8 @@ function Index() {
         {/* Form card */}
         <Card className="relative overflow-hidden border-border/60 bg-card/70 backdrop-blur-xl shadow-xl">
           <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-brand to-transparent" />
-          <CardContent className="p-6">
-            <form onSubmit={onSubmit} className="grid gap-5 md:grid-cols-2">
+          <CardContent className="p-4 sm:p-6">
+            <form onSubmit={onSubmit} className="grid gap-4 sm:gap-5 md:grid-cols-2">
               <Field icon={<Globe className="h-4 w-4" />} label="رابط الموقع">
                 <Input
                   type="url"
