@@ -5,7 +5,7 @@ import { usePersistentState } from "@/hooks/use-persistent-state";
 
 import {
   Sparkles, Globe, Languages, Wand2, Loader2, Film,
-  Mic, MousePointer2, AlertCircle, Gauge, Hash, Palette, ArrowRight, Music2,
+  Mic, MousePointer2, AlertCircle, Gauge, Hash, Palette, ArrowRight, Music2, Play, Square,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,8 +14,10 @@ import { Particles } from "@/components/Particles";
 import { GenerationOverlay } from "@/components/GenerationOverlay";
 
 import { generateTutorial, type GenerateResult } from "@/lib/tutorial.functions";
+import { synthesizeSpeech } from "@/lib/tts.functions";
 import { MY_LOVABLE_PROJECTS } from "@/lib/my-projects";
 import { VOICE_PRESETS } from "@/lib/voices";
+
 
 
 export const Route = createFileRoute("/")({
