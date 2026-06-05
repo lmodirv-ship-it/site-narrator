@@ -3,89 +3,65 @@ import { z } from "zod";
 
 const InputSchema = z.object({
   text: z.string().min(1).max(8000),
-  lang: z.string().min(2).max(10),
+  lang: z.string().min(2).max(10).optional(),
+  voiceId: z.string().min(4).max(64).optional(),
 });
 
-// Google translate TTS supports ~200 chars per request. Chunk by sentences.
-function chunkText(text: string, maxLen = 180): string[] {
-  const sentences = text
-    .replace(/\s+/g, " ")
-    .split(/(?<=[.!?؟،,])\s+/)
-    .filter(Boolean);
-  const chunks: string[] = [];
-  let cur = "";
-  for (const s of sentences) {
-    if ((cur + " " + s).trim().length > maxLen) {
-      if (cur) chunks.push(cur.trim());
-      if (s.length > maxLen) {
-        // hard split
-        for (let i = 0; i < s.length; i += maxLen) chunks.push(s.slice(i, i + maxLen));
-        cur = "";
-      } else {
-        cur = s;
-      }
-    } else {
-      cur = cur ? `${cur} ${s}` : s;
-    }
-  }
-  if (cur) chunks.push(cur.trim());
-  return chunks;
-}
-
-async function fetchTtsChunk(text: string, lang: string): Promise<Uint8Array> {
-  const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=${lang}&client=tw-ob&ttsspeed=1`;
-  const res = await fetch(url, {
-    headers: {
-      "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
-      Referer: "https://translate.google.com/",
-    },
-  });
-  if (!res.ok) throw new Error(`TTS chunk failed: ${res.status}`);
-  const buf = await res.arrayBuffer();
-  return new Uint8Array(buf);
-}
-
-function concatBytes(arrays: Uint8Array[]): Uint8Array {
-  const total = arrays.reduce((a, b) => a + b.length, 0);
-  const out = new Uint8Array(total);
-  let off = 0;
-  for (const a of arrays) {
-    out.set(a, off);
-    off += a.length;
-  }
-  return out;
+// Map language → recommended ElevenLabs voice (multilingual_v2 supports them all)
+function pickVoice(lang?: string, override?: string): string {
+  if (override) return override;
+  // Default: Sarah (warm, natural). Works well for AR/EN/FR/ES etc with multilingual model.
+  return "EXAVITQu4vr4xnSDxMaL";
 }
 
 function bytesToBase64(bytes: Uint8Array): string {
-  let bin = "";
-  const chunk = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunk) {
-    bin += String.fromCharCode.apply(
-      null,
-      Array.from(bytes.subarray(i, i + chunk)) as number[],
-    );
-  }
-  return btoa(bin);
+  // Buffer is available in the Worker runtime via nodejs_compat
+  // and avoids stack overflow on large audio.
+  // @ts-ignore
+  return Buffer.from(bytes).toString("base64");
 }
 
 export const synthesizeSpeech = createServerFn({ method: "POST" })
   .inputValidator(InputSchema)
   .handler(async ({ data }) => {
-    const chunks = chunkText(data.text);
-    const parts: Uint8Array[] = [];
-    for (const c of chunks) {
-      try {
-        const p = await fetchTtsChunk(c, data.lang);
-        parts.push(p);
-      } catch (e) {
-        console.error("tts chunk error", e);
-      }
+    const apiKey = process.env.ELEVENLABS_API_KEY;
+    if (!apiKey) {
+      throw new Error("ElevenLabs is not connected. Please connect it in Connectors.");
     }
-    if (parts.length === 0) throw new Error("TTS failed for all chunks");
-    const merged = concatBytes(parts);
+
+    const voiceId = pickVoice(data.lang, data.voiceId);
+
+    const res = await fetch(
+      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`,
+      {
+        method: "POST",
+        headers: {
+          "xi-api-key": apiKey,
+          "Content-Type": "application/json",
+          Accept: "audio/mpeg",
+        },
+        body: JSON.stringify({
+          text: data.text,
+          model_id: "eleven_multilingual_v2",
+          voice_settings: {
+            stability: 0.5,
+            similarity_boost: 0.75,
+            style: 0.35,
+            use_speaker_boost: true,
+            speed: 1.0,
+          },
+        }),
+      },
+    );
+
+    if (!res.ok) {
+      const err = await res.text().catch(() => "");
+      throw new Error(`ElevenLabs TTS failed (${res.status}): ${err.slice(0, 300)}`);
+    }
+
+    const buf = new Uint8Array(await res.arrayBuffer());
     return {
       mimeType: "audio/mpeg",
-      base64: bytesToBase64(merged),
+      base64: bytesToBase64(buf),
     };
   });
