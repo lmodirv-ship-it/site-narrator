@@ -109,6 +109,12 @@ export function RecorderStudio({
   const [iframeBlocked, setIframeBlocked] = useState(false);
   const [snapshotSaving, setSnapshotSaving] = useState(false);
   const snapshotSavingRef = useRef(false);
+  // Live recording telemetry (shown in the progress bar / counter UI)
+  const [recStartAt, setRecStartAt] = useState<number | null>(null);
+  const [recElapsedMs, setRecElapsedMs] = useState(0);
+  const [recBytes, setRecBytes] = useState(0);
+  const [recChunks, setRecChunks] = useState(0);
+  const [liveFileName, setLiveFileName] = useState<string | null>(null);
 
   // Real memory controls (Chromium exposes performance.memory)
   const [memBudget, setMemBudget] = useState<number>(512); // MB target
