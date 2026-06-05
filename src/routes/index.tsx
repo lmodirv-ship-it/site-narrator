@@ -14,7 +14,7 @@ import { MY_LOVABLE_PROJECTS } from "@/lib/my-projects";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Site Movie Maker — فيديو شرح حقيقي لأي موقع" },
+      { title: "Hn-MAKER — فيديو شرح حقيقي لأي موقع" },
       { name: "description", content: "تسجيل شاشة حقيقي لأي موقع مع مؤشر متحرك وصوت شرح — MP4 جاهز للتحميل." },
     ],
   }),
@@ -90,7 +90,7 @@ function Index() {
           </div>
           <h1 className="text-2xl sm:text-4xl font-bold tracking-tight">
             <span className="bg-gradient-to-r from-brand via-brand-2 to-brand bg-clip-text text-transparent">
-              Site Movie Maker
+              Hn-MAKER
             </span>
           </h1>
           <p className="max-w-2xl mx-auto text-xs sm:text-sm text-muted-foreground">
