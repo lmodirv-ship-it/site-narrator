@@ -24,7 +24,6 @@ export const Route = createFileRoute("/")({
 
 type Level = "quick" | "medium" | "full";
 type Quality = "720" | "1080" | "1440";
-type Voice = "female" | "male";
 type Effect = "none" | "zoom" | "fade";
 
 function pagesToLevel(n: number): Level {
