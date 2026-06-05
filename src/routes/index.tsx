@@ -152,11 +152,11 @@ function Index() {
                 </select>
               </Field>
 
-              <div className="md:col-span-2 flex flex-wrap items-center gap-4 pt-2">
+              <div className="md:col-span-2 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 sm:gap-4 pt-2">
                 <button
                   type="submit"
                   disabled={loading}
-                  className="group relative inline-flex h-12 items-center gap-2 overflow-hidden rounded-full btn-glow px-7 text-sm font-semibold disabled:opacity-60 disabled:cursor-not-allowed hover:-translate-y-0.5 hover:brightness-110 active:translate-y-0 transition"
+                  className="group relative inline-flex h-12 w-full sm:w-auto items-center justify-center gap-2 overflow-hidden rounded-full btn-glow px-6 sm:px-7 text-sm sm:text-base font-semibold disabled:opacity-60 disabled:cursor-not-allowed hover:-translate-y-0.5 hover:brightness-110 active:translate-y-0 transition"
                 >
                   {/* shimmer overlay */}
                   <span className="pointer-events-none absolute inset-0 -skew-x-12 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer" />
@@ -174,12 +174,12 @@ function Index() {
                 </button>
 
                 {stage && (
-                  <span className="inline-flex items-center gap-2 text-sm text-muted-foreground">
-                    <span className="relative inline-flex h-2 w-2">
+                  <span className="inline-flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+                    <span className="relative inline-flex h-2 w-2 shrink-0">
                       <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand opacity-75" />
                       <span className="relative inline-flex h-2 w-2 rounded-full bg-brand" />
                     </span>
-                    {stage}
+                    <span className="break-words">{stage}</span>
                   </span>
                 )}
               </div>
