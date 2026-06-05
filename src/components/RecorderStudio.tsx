@@ -615,11 +615,11 @@ export function RecorderStudio({
       try { rec.requestData(); } catch { /* noop */ }
       // give the dataavailable event a tick
       await new Promise((r) => setTimeout(r, 250));
-      await finalizeDownloadFromChunks("جزئي");
+      await finalizeDownloadFromChunks("نسخة فورية", true);
       return;
     }
     if (recChunksRef.current.length) {
-      await finalizeDownloadFromChunks("جزئي");
+      await finalizeDownloadFromChunks("نسخة فورية", true);
     } else {
       setError("لا يوجد محتوى بعد — انتظر بدء التشغيل لحظات ثم أعد المحاولة.");
     }
