@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Sparkles, Globe, Languages, Wand2, Loader2, Film,
   Mic, MousePointer2, AlertCircle, Gauge, Hash, Palette, ArrowRight, Music2,
