@@ -787,8 +787,14 @@ export function RecorderStudio({
       drawingRef.current = false;
       try { if (rec.state !== "inactive") rec.stop(); } catch { /* noop */ }
       await stopped;
+      // Flush pending live writes and close the on-disk webm file.
+      try { await writeQueue; } catch { /* noop */ }
+      if (liveWritable) {
+        try { await liveWritable.close(); } catch (err) { console.warn("close live writable failed", err); }
+        liveWritable = null;
+      }
       audioCtx.close();
-      setPhase("اكتمل التشغيل — تجهيز الملف…");
+      setPhase("اكتمل التشغيل — تجهيز نسخة MP4…");
       setProgress(95);
       await finalizeDownloadFromChunks("اكتمل");
       setProgress(100);
