@@ -603,19 +603,19 @@ export function RecorderStudio({
   // Click handler for "Download now" — works mid-playback too.
   const handleDownloadClick = useCallback(async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
-    if (downloadUrl) {
-      const a = document.createElement("a");
-      a.href = downloadUrl; a.download = downloadName;
-      document.body.appendChild(a); a.click(); a.remove();
-      return;
-    }
-    // Mid-playback: flush recorder and build a partial file.
+    // Mid-playback: flush recorder and build a fresh copy without stopping production.
     const rec = recorderRef.current;
     if (rec && rec.state === "recording") {
       try { rec.requestData(); } catch { /* noop */ }
       // give the dataavailable event a tick
       await new Promise((r) => setTimeout(r, 250));
       await finalizeDownloadFromChunks("نسخة فورية", true);
+      return;
+    }
+    if (downloadUrl) {
+      const a = document.createElement("a");
+      a.href = downloadUrl; a.download = downloadName;
+      document.body.appendChild(a); a.click(); a.remove();
       return;
     }
     if (recChunksRef.current.length) {
