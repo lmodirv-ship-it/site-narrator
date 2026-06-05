@@ -281,7 +281,7 @@ function Index() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => { setResult(null); setStage(""); }}
+                  onClick={resetSession}
                   className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card/60 px-3 py-1.5 text-xs hover:bg-card transition"
                 >
                   <ArrowRight className="h-3.5 w-3.5" /> رجوع للإعدادات
@@ -295,7 +295,10 @@ function Index() {
                 secondsPerPage={secondsPerPage}
                 voicePitch={pitch}
                 voiceSpeed={speed}
+                startFromIndex={resumeFrom}
+                onSceneChange={(i) => setResumeFrom(i)}
               />
+
             </CardContent>
           </Card>
         )}
