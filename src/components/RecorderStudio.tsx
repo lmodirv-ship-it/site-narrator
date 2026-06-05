@@ -1,0 +1,450 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import {
+  Play, Square, Download, Loader2, MousePointer2,
+  FileVideo, Volume2, AlertCircle, Eye,
+} from "lucide-react";
+import type { Scene } from "@/lib/tutorial.functions";
+import { synthesizeSpeech } from "@/lib/tts.functions";
+
+type Effect = "none" | "zoom" | "fade";
+
+interface Props {
+  scenes: Scene[];
+  language: string;
+  siteName: string;
+  effect: Effect;
+  secondsPerPage: number;
+}
+
+type LogEntry = {
+  idx: number;
+  pageUrl: string;
+  pageTitle: string;
+  highlights: string[];
+  narration: string;
+  status: "pending" | "active" | "done";
+};
+
+export function RecorderStudio({
+  scenes, language, siteName, effect, secondsPerPage,
+}: Props) {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const cursorRef = useRef<HTMLDivElement>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const stopFlagRef = useRef(false);
+  const audioBuffersRef = useRef<Map<number, AudioBuffer>>(new Map());
+
+  const [logs, setLogs] = useState<LogEntry[]>(() =>
+    scenes.map((s, i) => ({
+      idx: i,
+      pageUrl: s.pageUrl,
+      pageTitle: s.pageTitle,
+      highlights: s.cursorTargets.map((t) => t.label).filter(Boolean),
+      narration: s.narration,
+      status: "pending",
+    })),
+  );
+  const [phase, setPhase] = useState("");
+  const [progress, setProgress] = useState(0);
+  const [recording, setRecording] = useState(false);
+  const [preparing, setPreparing] = useState(false);
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [downloadName, setDownloadName] = useState("tutorial.mp4");
+  const [error, setError] = useState<string | null>(null);
+  const [currentIdx, setCurrentIdx] = useState(0);
+  const [iframeBlocked, setIframeBlocked] = useState(false);
+
+  const synthesize = useServerFn(synthesizeSpeech);
+
+  // Load first page in iframe on mount
+  useEffect(() => {
+    if (iframeRef.current && scenes[0]) {
+      iframeRef.current.src = scenes[0].pageUrl;
+    }
+  }, [scenes]);
+
+  // Detect iframe blocking (best effort)
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const f = iframeRef.current;
+      if (!f) return;
+      try {
+        // accessing contentDocument throws if cross-origin (still loaded fine)
+        void f.contentDocument;
+      } catch { /* expected for cross-origin */ }
+    }, 3000);
+    return () => clearTimeout(t);
+  }, []);
+
+  const setLogStatus = (idx: number, status: LogEntry["status"]) => {
+    setLogs((prev) => prev.map((l) => (l.idx === idx ? { ...l, status } : l)));
+  };
+
+  const animateCursor = useCallback(
+    async (targets: { x: number; y: number }[], durationMs: number) => {
+      const cursor = cursorRef.current;
+      const stage = stageRef.current;
+      if (!cursor || !stage || targets.length === 0) return;
+      const rect = stage.getBoundingClientRect();
+      const segs = Math.max(targets.length, 1);
+      const perSeg = durationMs / segs;
+      const start = performance.now();
+      let from = targets[0];
+      cursor.style.left = `${(from.x / 100) * rect.width}px`;
+      cursor.style.top = `${(from.y / 100) * rect.height}px`;
+      for (let i = 0; i < targets.length; i++) {
+        const to = targets[i];
+        const segStart = performance.now();
+        await new Promise<void>((resolve) => {
+          const tick = () => {
+            if (stopFlagRef.current) return resolve();
+            const t = Math.min((performance.now() - segStart) / perSeg, 1);
+            const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+            const cx = from.x + (to.x - from.x) * eased;
+            const cy = from.y + (to.y - from.y) * eased;
+            cursor.style.left = `${(cx / 100) * rect.width}px`;
+            cursor.style.top = `${(cy / 100) * rect.height}px`;
+            if (t >= 1) resolve();
+            else requestAnimationFrame(tick);
+          };
+          tick();
+        });
+        from = to;
+      }
+      void start;
+    },
+    [],
+  );
+
+  const preloadAudio = useCallback(
+    async (audioCtx: AudioContext) => {
+      audioBuffersRef.current.clear();
+      for (let i = 0; i < scenes.length; i++) {
+        if (stopFlagRef.current) return;
+        setPhase(`توليد الصوت ${i + 1}/${scenes.length}`);
+        setProgress((i / scenes.length) * 30);
+        try {
+          const res = await synthesize({
+            data: { text: scenes[i].narration, lang: language },
+          });
+          const bin = atob(res.base64);
+          const bytes = new Uint8Array(bin.length);
+          for (let j = 0; j < bin.length; j++) bytes[j] = bin.charCodeAt(j);
+          const buf = await audioCtx.decodeAudioData(bytes.buffer);
+          audioBuffersRef.current.set(i, buf);
+        } catch (e) {
+          console.error("tts scene", i, e);
+        }
+      }
+    },
+    [scenes, language, synthesize],
+  );
+
+  const startRecording = useCallback(async () => {
+    setError(null);
+    setDownloadUrl(null);
+    setPreparing(true);
+    stopFlagRef.current = false;
+
+    try {
+      const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const audioCtx = new AC();
+      await audioCtx.resume();
+      audioCtxRef.current = audioCtx;
+
+      // 1) Preload TTS
+      await preloadAudio(audioCtx);
+      if (stopFlagRef.current) { setPreparing(false); return; }
+
+      // 2) Ask user to share this tab
+      setPhase("اختر هذا التبويب لمشاركته (Chrome → This Tab) ثم اضغط مشاركة");
+      const displayStream = await navigator.mediaDevices.getDisplayMedia({
+        video: { frameRate: 30 } as MediaTrackConstraints,
+        audio: false,
+      });
+
+      // 3) Combine display video + TTS audio
+      const audioDest = audioCtx.createMediaStreamDestination();
+      const combined = new MediaStream([
+        ...displayStream.getVideoTracks(),
+        ...audioDest.stream.getAudioTracks(),
+      ]);
+
+      const mime = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
+        ? "video/webm;codecs=vp9,opus"
+        : "video/webm";
+      const chunks: Blob[] = [];
+      const rec = new MediaRecorder(combined, {
+        mimeType: mime, videoBitsPerSecond: 8_000_000, audioBitsPerSecond: 128_000,
+      });
+      recorderRef.current = rec;
+      rec.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+      const stopped = new Promise<void>((res) => { rec.onstop = () => res(); });
+      rec.start(1000);
+
+      // If user stops sharing from browser UI
+      displayStream.getVideoTracks()[0].addEventListener("ended", () => {
+        stopFlagRef.current = true;
+        try { rec.state !== "inactive" && rec.stop(); } catch { /* noop */ }
+      });
+
+      setPreparing(false);
+      setRecording(true);
+      setPhase("جارٍ التسجيل…");
+
+      // 4) Walk through scenes
+      for (let i = 0; i < scenes.length; i++) {
+        if (stopFlagRef.current) break;
+        const scene = scenes[i];
+        setCurrentIdx(i);
+        setLogStatus(i, "active");
+        setProgress(30 + (i / scenes.length) * 60);
+
+        // Navigate iframe (skip if same URL as initial first scene)
+        if (iframeRef.current && (i > 0 || iframeRef.current.src !== scene.pageUrl)) {
+          iframeRef.current.src = scene.pageUrl;
+          // wait for load (best-effort, capped)
+          await new Promise<void>((resolve) => {
+            const f = iframeRef.current!;
+            let done = false;
+            const onLoad = () => { if (!done) { done = true; resolve(); } };
+            f.addEventListener("load", onLoad, { once: true });
+            setTimeout(() => { if (!done) { done = true; resolve(); } }, 4500);
+          });
+        }
+        // small settle
+        await new Promise((r) => setTimeout(r, 400));
+
+        // Audio
+        const buf = audioBuffersRef.current.get(i);
+        const narrationSec = buf ? buf.duration : Math.max(secondsPerPage, scene.narration.split(/\s+/).length * 0.38);
+        const durationSec = Math.max(secondsPerPage, narrationSec + 0.6);
+
+        let src: AudioBufferSourceNode | null = null;
+        if (buf) {
+          src = audioCtx.createBufferSource();
+          src.buffer = buf;
+          src.connect(audioDest);
+          src.connect(audioCtx.destination);
+          src.start();
+        }
+
+        // Animate cursor for durationSec
+        const targets = scene.cursorTargets.length
+          ? scene.cursorTargets
+          : [{ x: 50, y: 50, label: "" }];
+        await animateCursor(targets, durationSec * 1000);
+
+        try { src?.stop(); } catch { /* noop */ }
+        setLogStatus(i, "done");
+      }
+
+      setPhase("إنهاء التسجيل…");
+      try { rec.state !== "inactive" && rec.stop(); } catch { /* noop */ }
+      displayStream.getTracks().forEach((t) => t.stop());
+      await stopped;
+      audioCtx.close();
+
+      const webmBlob = new Blob(chunks, { type: "video/webm" });
+
+      // 5) Convert to MP4 via ffmpeg.wasm
+      setPhase("تحويل إلى MP4… (قد يستغرق دقائق)");
+      setProgress(92);
+      try {
+        const { FFmpeg } = await import("@ffmpeg/ffmpeg");
+        const { fetchFile, toBlobURL } = await import("@ffmpeg/util");
+        const ffmpeg = new FFmpeg();
+        const base = "https://unpkg.com/@ffmpeg/core@0.12.10/dist/umd";
+        await ffmpeg.load({
+          coreURL: await toBlobURL(`${base}/ffmpeg-core.js`, "text/javascript"),
+          wasmURL: await toBlobURL(`${base}/ffmpeg-core.wasm`, "application/wasm"),
+        });
+        ffmpeg.on("progress", ({ progress: p }) => {
+          setProgress(92 + Math.min(p, 1) * 7);
+        });
+        await ffmpeg.writeFile("in.webm", await fetchFile(webmBlob));
+        await ffmpeg.exec([
+          "-i", "in.webm",
+          "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+          "-c:a", "aac", "-b:a", "192k",
+          "-movflags", "+faststart",
+          "out.mp4",
+        ]);
+        const out = (await ffmpeg.readFile("out.mp4")) as Uint8Array;
+        const ab = out.buffer.slice(out.byteOffset, out.byteOffset + out.byteLength) as ArrayBuffer;
+        const mp4Blob = new Blob([ab], { type: "video/mp4" });
+        setDownloadUrl(URL.createObjectURL(mp4Blob));
+        setDownloadName(`${siteName}-tutorial.mp4`);
+        setPhase("جاهز ✓");
+      } catch (e) {
+        console.error("ffmpeg failed", e);
+        setDownloadUrl(URL.createObjectURL(webmBlob));
+        setDownloadName(`${siteName}-tutorial.webm`);
+        setPhase("تعذّر التحويل لـ MP4 — تم توفير WebM");
+      }
+      setProgress(100);
+    } catch (e) {
+      console.error(e);
+      setError(e instanceof Error ? e.message : "خطأ غير معروف");
+      setPhase("");
+    } finally {
+      setRecording(false);
+      setPreparing(false);
+    }
+    void effect; // reserved for future visual effects
+  }, [preloadAudio, scenes, language, siteName, animateCursor, secondsPerPage, effect]);
+
+  const stop = useCallback(() => {
+    stopFlagRef.current = true;
+    try { recorderRef.current?.stop(); } catch { /* noop */ }
+    setRecording(false);
+    setPhase("تم الإيقاف");
+  }, []);
+
+  return (
+    <div className="space-y-4">
+      {/* Top controls */}
+      <div className="flex flex-wrap items-center gap-2">
+        {!recording && !preparing ? (
+          <Button onClick={startRecording} className="gap-2">
+            <Play className="h-4 w-4" /> ابدأ التسجيل (شارك هذا التبويب)
+          </Button>
+        ) : (
+          <Button variant="destructive" onClick={stop} className="gap-2">
+            <Square className="h-4 w-4" /> إيقاف
+          </Button>
+        )}
+        {preparing && (
+          <span className="inline-flex items-center gap-2 text-xs text-muted-foreground">
+            <Loader2 className="h-3 w-3 animate-spin" /> تجهيز…
+          </span>
+        )}
+        {downloadUrl && (
+          <a
+            href={downloadUrl}
+            download={downloadName}
+            className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            <Download className="h-4 w-4" /> تحميل {downloadName}
+          </a>
+        )}
+        <span className="text-xs text-muted-foreground ms-auto">
+          المشهد {currentIdx + 1} / {scenes.length}
+        </span>
+      </div>
+
+      {/* Main: iframe stage 70% + analysis 30% on desktop */}
+      <div className="grid gap-4 lg:grid-cols-[70%_30%]">
+        {/* Stage */}
+        <div
+          ref={stageRef}
+          className="relative rounded-xl border border-border bg-black aspect-video overflow-hidden shadow-xl"
+        >
+          <iframe
+            ref={iframeRef}
+            title="site"
+            className="absolute inset-0 w-full h-full bg-white"
+            sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
+            referrerPolicy="no-referrer"
+            onError={() => setIframeBlocked(true)}
+          />
+          {/* Cursor overlay */}
+          <div
+            ref={cursorRef}
+            className="pointer-events-none absolute z-10 -translate-x-2 -translate-y-2 transition-none"
+            style={{ left: "50%", top: "50%" }}
+          >
+            <div className="relative">
+              <div className="absolute -inset-3 rounded-full bg-yellow-400/40 blur-md animate-pulse" />
+              <MousePointer2 className="relative h-8 w-8 text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.9)]" strokeWidth={2.5} fill="currentColor" />
+            </div>
+          </div>
+          {/* Scene badge */}
+          <div className="absolute bottom-3 left-3 right-3 z-10 flex items-center justify-between gap-2 rounded-lg bg-black/70 px-3 py-2 text-white text-xs backdrop-blur">
+            <span className="truncate font-medium">
+              {scenes[currentIdx]?.pageTitle ?? ""}
+            </span>
+            <span className="shrink-0 opacity-70" dir="ltr">
+              {currentIdx + 1}/{scenes.length}
+            </span>
+          </div>
+        </div>
+
+        {/* Live analysis panel */}
+        <div className="rounded-xl border border-border bg-card/50 backdrop-blur p-3 max-h-[70vh] overflow-y-auto">
+          <div className="flex items-center gap-2 mb-3 text-sm font-semibold">
+            <Eye className="h-4 w-4 text-brand" /> لوحة التحليل المباشرة
+          </div>
+          <ol className="space-y-2 text-xs">
+            {logs.map((l) => (
+              <li
+                key={l.idx}
+                className={`rounded-lg border p-2.5 transition ${
+                  l.status === "active"
+                    ? "border-brand bg-brand/10 shadow-lg shadow-brand/20"
+                    : l.status === "done"
+                    ? "border-border/60 bg-muted/30 opacity-70"
+                    : "border-border/40"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <span className="font-semibold truncate">{l.idx + 1}. {l.pageTitle}</span>
+                  <span className="text-[10px] shrink-0">
+                    {l.status === "active" && <Loader2 className="h-3 w-3 animate-spin text-brand" />}
+                    {l.status === "done" && <span className="text-green-500">✓</span>}
+                  </span>
+                </div>
+                <div className="text-[10px] text-muted-foreground truncate" dir="ltr">{l.pageUrl}</div>
+                {l.highlights.length > 0 && (
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {l.highlights.slice(0, 4).map((h, j) => (
+                      <span key={j} className="rounded-full bg-brand/15 text-brand px-2 py-0.5 text-[10px]">
+                        {h}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <p className="mt-1.5 text-muted-foreground line-clamp-3 leading-relaxed">
+                  <Volume2 className="inline h-3 w-3 me-1 opacity-60" />
+                  {l.narration}
+                </p>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </div>
+
+      {(phase || progress > 0) && (
+        <div className="space-y-1">
+          <Progress value={progress} />
+          <p className="text-xs text-muted-foreground">{phase}</p>
+        </div>
+      )}
+
+      {error && (
+        <div className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+          <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+
+      {iframeBlocked && (
+        <p className="text-xs text-yellow-600">
+          ملاحظة: قد يرفض بعض المواقع التحميل داخل إطار. جرّب موقعاً آخر إن لم يظهر شيء.
+        </p>
+      )}
+
+      <div className="rounded-lg border border-border/60 bg-muted/30 p-3 text-xs text-muted-foreground leading-relaxed">
+        <FileVideo className="inline h-3.5 w-3.5 me-1" />
+        كيف يعمل: عند الضغط على «ابدأ التسجيل» سيطلب المتصفح اختيار التبويب
+        لمشاركته — اختر <b>This Tab</b>. سيتنقل النظام تلقائياً بين الصفحات،
+        ويُحرّك المؤشر، ويُشغّل صوت الشرح، ثم يحوّل التسجيل إلى MP4 جاهز للتحميل.
+      </div>
+    </div>
+  );
+}

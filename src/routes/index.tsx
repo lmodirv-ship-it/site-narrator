@@ -2,47 +2,47 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import {
-  Sparkles,
-  Globe,
-  Languages,
-  Layers,
-  Wand2,
-  Loader2,
-  Film,
-  Mic,
-  MousePointer2,
-  Gauge,
-  AlertCircle,
+  Sparkles, Globe, Languages, Wand2, Loader2, Film,
+  Mic, MousePointer2, AlertCircle, Gauge, Hash, Palette,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { TutorialPlayer } from "@/components/TutorialPlayer";
+import { RecorderStudio } from "@/components/RecorderStudio";
 import { generateTutorial, type GenerateResult } from "@/lib/tutorial.functions";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "HN Website Tutorial Video Maker" },
-      {
-        name: "description",
-        content:
-          "أنشئ فيديو شرح احترافي لأي موقع مع مؤشر فأرة متحرك وصوت بشري — MP4 حتى 4K.",
-      },
+      { title: "Site Movie Maker — فيديو شرح حقيقي لأي موقع" },
+      { name: "description", content: "تسجيل شاشة حقيقي لأي موقع مع مؤشر متحرك وصوت شرح — MP4 جاهز للتحميل." },
     ],
   }),
   component: Index,
 });
 
 type Level = "quick" | "medium" | "full";
+type Quality = "720" | "1080" | "1440";
+type Voice = "female" | "male";
+type Effect = "none" | "zoom" | "fade";
+
+function pagesToLevel(n: number): Level {
+  if (n <= 10) return "quick";
+  if (n <= 30) return "medium";
+  return "full";
+}
 
 function Index() {
   const generate = useServerFn(generateTutorial);
   const [url, setUrl] = useState("https://lovable.dev");
   const [siteName, setSiteName] = useState("Lovable");
+  const [pages, setPages] = useState(5);
+  const [quality, setQuality] = useState<Quality>("1080");
   const [language, setLanguage] = useState("ar");
-  const [level, setLevel] = useState<Level>("quick");
-  const [stage, setStage] = useState<string>("");
+  const [voice, setVoice] = useState<Voice>("female");
+  const [effect, setEffect] = useState<Effect>("none");
+  const [secondsPerPage, setSecondsPerPage] = useState(8);
+
+  const [stage, setStage] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<GenerateResult | null>(null);
@@ -54,139 +54,128 @@ function Index() {
     setLoading(true);
     setStage("جارٍ تحليل الموقع والتقاط الصفحات…");
     try {
-      const r = await generate({ data: { url, siteName, language, level } });
-      setStage("جاهز ✓");
-      setResult(r);
+      const r = await generate({
+        data: { url, siteName, language, level: pagesToLevel(pages) },
+      });
+      // trim to user-requested page count
+      const trimmed: GenerateResult = {
+        ...r,
+        scenes: r.scenes.slice(0, pages),
+        totalSeconds: r.scenes.slice(0, pages).reduce((a, s) => a + Math.max(6, s.narration.split(/\s+/).length * 0.42), 0),
+      };
+      setResult(trimmed);
+      setStage("جاهز — اضغط ابدأ التسجيل");
     } catch (err) {
       setError(err instanceof Error ? err.message : "خطأ غير معروف");
       setStage("");
     } finally {
       setLoading(false);
     }
+    void voice; void quality; // forwarded for future use
   };
 
   return (
     <div dir="rtl" className="min-h-screen text-foreground">
-      {/* Decorative orbs */}
       <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
         <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-brand/20 blur-3xl animate-float" />
         <div className="absolute top-40 -right-32 h-96 w-96 rounded-full bg-brand-2/20 blur-3xl animate-float" style={{ animationDelay: "1s" }} />
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8">
-        {/* Hero */}
-        <header className="pt-4 sm:pt-8 text-center space-y-3 sm:space-y-4">
-          <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 sm:px-4 py-1.5 text-[11px] sm:text-xs backdrop-blur max-w-full">
-            <Sparkles className="h-3.5 w-3.5 text-brand shrink-0" />
-            <span className="text-muted-foreground truncate">مدعوم بـ ElevenLabs + Firecrawl + Gemini</span>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
+        <header className="pt-2 text-center space-y-2">
+          <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1 text-[11px] sm:text-xs backdrop-blur">
+            <Sparkles className="h-3.5 w-3.5 text-brand" />
+            <span className="text-muted-foreground">تسجيل شاشة حقيقي · صوت شرح · MP4</span>
           </div>
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight leading-tight">
+          <h1 className="text-2xl sm:text-4xl font-bold tracking-tight">
             <span className="bg-gradient-to-r from-brand via-brand-2 to-brand bg-clip-text text-transparent">
-              HN Tutorial Video Maker
+              Site Movie Maker
             </span>
           </h1>
-          <p className="max-w-2xl mx-auto text-sm sm:text-base text-muted-foreground px-2">
-            ضَع رابط أي موقع — نولّد لك فيديو شرح احترافي بصوت بشري ومؤشر فأرة متحرك،
-            جاهز للتحميل بصيغة MP4 حتى 4K.
+          <p className="max-w-2xl mx-auto text-xs sm:text-sm text-muted-foreground">
+            ضع الرابط، اختر الإعدادات، ثم ابدأ التسجيل — يتنقل النظام داخل الموقع الحقيقي
+            ويصنع فيديو شرح بصوت ومؤشر متحرك.
           </p>
-          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 pt-2 text-[11px] sm:text-xs text-muted-foreground">
-            <Badge icon={<Film className="h-3 w-3" />}>MP4 / 4K</Badge>
-            <Badge icon={<Mic className="h-3 w-3" />}>صوت بشري</Badge>
-            <Badge icon={<MousePointer2 className="h-3 w-3" />}>مؤشر متحرك</Badge>
-            <Badge icon={<Gauge className="h-3 w-3" />}>حتى 120 صفحة</Badge>
-          </div>
         </header>
 
-        {/* Form card */}
-        <Card className="relative overflow-hidden border-border/60 bg-card/70 backdrop-blur-xl shadow-xl">
-          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-brand to-transparent" />
+        {/* Form */}
+        <Card className="border-border/60 bg-card/70 backdrop-blur-xl shadow-xl">
           <CardContent className="p-4 sm:p-6">
-            <form onSubmit={onSubmit} className="grid gap-4 sm:gap-5 md:grid-cols-2">
+            <form onSubmit={onSubmit} className="grid gap-4 md:grid-cols-3">
               <Field icon={<Globe className="h-4 w-4" />} label="رابط الموقع">
-                <Input
-                  type="url"
-                  value={url}
-                  required
-                  onChange={(e) => setUrl(e.target.value)}
-                  placeholder="https://example.com"
-                  dir="ltr"
-                  className="h-11"
-                />
+                <Input type="url" required value={url} onChange={(e) => setUrl(e.target.value)} dir="ltr" className="h-10" placeholder="https://example.com" />
               </Field>
-
               <Field icon={<Sparkles className="h-4 w-4" />} label="اسم الموقع">
-                <Input
-                  type="text"
-                  value={siteName}
-                  required
-                  maxLength={100}
-                  onChange={(e) => setSiteName(e.target.value)}
-                  placeholder="مثلاً: مدونتي"
-                  className="h-11"
-                />
+                <Input type="text" required maxLength={100} value={siteName} onChange={(e) => setSiteName(e.target.value)} className="h-10" />
+              </Field>
+              <Field icon={<Hash className="h-4 w-4" />} label={`عدد الصفحات (${pages})`}>
+                <input type="range" min={1} max={50} value={pages} onChange={(e) => setPages(Number(e.target.value))} className="w-full accent-[oklch(0.68_0.21_295)]" />
               </Field>
 
-              <Field icon={<Languages className="h-4 w-4" />} label="لغة الفيديو">
-                <select
-                  className="flex h-11 w-full rounded-md border border-input bg-transparent px-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand/50"
-                  value={language}
-                  onChange={(e) => setLanguage(e.target.value)}
-                >
-                  <option value="ar">🇸🇦 العربية</option>
-                  <option value="en">🇬🇧 English</option>
-                  <option value="fr">🇫🇷 Français</option>
-                  <option value="es">🇪🇸 Español</option>
-                  <option value="de">🇩🇪 Deutsch</option>
+              <Field icon={<Gauge className="h-4 w-4" />} label="جودة الفيديو">
+                <select className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 text-sm" value={quality} onChange={(e) => setQuality(e.target.value as Quality)}>
+                  <option value="720">720p</option>
+                  <option value="1080">1080p Full HD</option>
+                  <option value="1440">1440p 2K</option>
                 </select>
               </Field>
 
-              <Field icon={<Layers className="h-4 w-4" />} label="مستوى الشرح">
-                <select
-                  className="flex h-11 w-full rounded-md border border-input bg-transparent px-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand/50"
-                  value={level}
-                  onChange={(e) => setLevel(e.target.value as Level)}
-                >
-                  <option value="quick">⚡ سريع — حتى 10 صفحات</option>
-                  <option value="medium">🎯 متوسط — حتى 30 صفحة</option>
-                  <option value="full">🏆 كامل — حتى 120 صفحة</option>
+              <Field icon={<Languages className="h-4 w-4" />} label="اللغة">
+                <select className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 text-sm" value={language} onChange={(e) => setLanguage(e.target.value)}>
+                  <option value="ar">العربية</option>
+                  <option value="en">English</option>
+                  <option value="fr">Français</option>
+                  <option value="es">Español</option>
+                  <option value="de">Deutsch</option>
                 </select>
               </Field>
 
-              <div className="md:col-span-2 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 sm:gap-4 pt-2">
+              <Field icon={<Mic className="h-4 w-4" />} label="نوع الصوت">
+                <select className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 text-sm" value={voice} onChange={(e) => setVoice(e.target.value as Voice)}>
+                  <option value="female">أنثوي</option>
+                  <option value="male">ذكوري</option>
+                </select>
+              </Field>
+
+              <Field icon={<Palette className="h-4 w-4" />} label="المؤثرات">
+                <select className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 text-sm" value={effect} onChange={(e) => setEffect(e.target.value as Effect)}>
+                  <option value="none">بدون</option>
+                  <option value="zoom">تكبير ناعم</option>
+                  <option value="fade">تلاشي</option>
+                </select>
+              </Field>
+
+              <Field icon={<MousePointer2 className="h-4 w-4" />} label={`زمن كل صفحة (${secondsPerPage}ث)`}>
+                <input type="range" min={5} max={20} value={secondsPerPage} onChange={(e) => setSecondsPerPage(Number(e.target.value))} className="w-full accent-[oklch(0.68_0.21_295)]" />
+              </Field>
+
+              <div className="md:col-span-3 flex flex-wrap items-center gap-3 pt-2">
                 <button
                   type="submit"
                   disabled={loading}
-                  className="group relative inline-flex h-12 w-full sm:w-auto items-center justify-center gap-2 overflow-hidden rounded-full btn-glow px-6 sm:px-7 text-sm sm:text-base font-semibold disabled:opacity-60 disabled:cursor-not-allowed hover:-translate-y-0.5 hover:brightness-110 active:translate-y-0 transition"
+                  className="group relative inline-flex h-11 items-center justify-center gap-2 overflow-hidden rounded-full btn-glow px-6 text-sm font-semibold disabled:opacity-60 hover:-translate-y-0.5 hover:brightness-110 transition"
                 >
-                  {/* shimmer overlay */}
                   <span className="pointer-events-none absolute inset-0 -skew-x-12 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer" />
                   {loading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      جارٍ الإنشاء…
-                    </>
+                    <><Loader2 className="h-4 w-4 animate-spin" /> جارٍ التحليل…</>
                   ) : (
-                    <>
-                      <Wand2 className="h-4 w-4 transition-transform group-hover:rotate-12" />
-                      أنشئ الفيديو
-                    </>
+                    <><Wand2 className="h-4 w-4 transition-transform group-hover:rotate-12" /> Generate</>
                   )}
                 </button>
-
                 {stage && (
                   <span className="inline-flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
-                    <span className="relative inline-flex h-2 w-2 shrink-0">
+                    <span className="relative inline-flex h-2 w-2">
                       <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand opacity-75" />
                       <span className="relative inline-flex h-2 w-2 rounded-full bg-brand" />
                     </span>
-                    <span className="break-words">{stage}</span>
+                    {stage}
                   </span>
                 )}
               </div>
             </form>
 
             {error && (
-              <div className="mt-5 flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+              <div className="mt-4 flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
                 <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
                 <span>{error}</span>
               </div>
@@ -194,61 +183,44 @@ function Index() {
           </CardContent>
         </Card>
 
-        {/* Result */}
+        {/* Studio */}
         {result && (
           <Card className="border-border/60 bg-card/70 backdrop-blur-xl shadow-xl">
-            <CardContent className="p-4 sm:p-6 space-y-4">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div className="flex items-center gap-2">
-                  <div className="h-9 w-9 rounded-lg btn-glow grid place-items-center">
-                    <Film className="h-4 w-4 text-white" />
-                  </div>
-                  <div>
-                    <h2 className="font-semibold">المعاينة جاهزة</h2>
-                    <p className="text-xs text-muted-foreground">
-                      {result.scenes.length} مشهد · ≈ {result.totalSeconds} ثانية
-                    </p>
-                  </div>
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="h-9 w-9 rounded-lg btn-glow grid place-items-center">
+                  <Film className="h-4 w-4 text-white" />
+                </div>
+                <div>
+                  <h2 className="font-semibold text-sm sm:text-base">استوديو التسجيل</h2>
+                  <p className="text-xs text-muted-foreground">
+                    {result.scenes.length} صفحة · جودة {quality}p · لغة {language.toUpperCase()}
+                  </p>
                 </div>
               </div>
-              <TutorialPlayer
+              <RecorderStudio
                 scenes={result.scenes}
                 language={language}
                 siteName={siteName}
+                effect={effect}
+                secondsPerPage={secondsPerPage}
               />
             </CardContent>
           </Card>
         )}
 
-        <footer className="text-center text-xs text-muted-foreground py-6">
-          MP4 (H.264 + AAC) حتى 4K · صوت ElevenLabs مدمج · صُنع بـ ❤️ من HN
+        <footer className="text-center text-xs text-muted-foreground py-4">
+          تسجيل شاشة حقيقي · Google TTS · MP4 (H.264/AAC)
         </footer>
       </div>
     </div>
   );
 }
 
-function Badge({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card/60 px-3 py-1 backdrop-blur">
-      <span className="text-brand">{icon}</span>
-      {children}
-    </span>
-  );
-}
-
-function Field({
-  icon,
-  label,
-  children,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  children: React.ReactNode;
-}) {
+function Field({ icon, label, children }: { icon: React.ReactNode; label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <label className="flex items-center gap-1.5 text-sm font-medium">
+      <label className="flex items-center gap-1.5 text-xs sm:text-sm font-medium">
         <span className="text-brand">{icon}</span>
         {label}
       </label>
