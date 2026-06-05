@@ -393,14 +393,24 @@ export function RecorderStudio({
           setProgress(92 + Math.min(p, 1) * 7);
         });
         await ffmpeg.writeFile("in.webm", await fetchFile(webmBlob));
-        await ffmpeg.exec([
+        const args = [
           "-i", "in.webm",
           "-vf", `scale=-2:${resolutionRef.current}`,
-          "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+          "-c:v", codecRef.current, "-preset", "veryfast",
+        ];
+        if (bitrateRef.current > 0) {
+          args.push("-b:v", `${bitrateRef.current}k`, "-maxrate", `${Math.round(bitrateRef.current * 1.5)}k`, "-bufsize", `${bitrateRef.current * 2}k`);
+        } else {
+          args.push("-crf", String(crfRef.current));
+        }
+        if (codecRef.current === "libx265") args.push("-tag:v", "hvc1");
+        args.push(
           "-c:a", "aac", "-b:a", "192k",
           "-movflags", "+faststart",
           "out.mp4",
-        ]);
+        );
+        await ffmpeg.exec(args);
+
 
         const out = (await ffmpeg.readFile("out.mp4")) as Uint8Array;
         const ab = out.buffer.slice(out.byteOffset, out.byteOffset + out.byteLength) as ArrayBuffer;
