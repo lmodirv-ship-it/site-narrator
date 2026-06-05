@@ -440,6 +440,7 @@ export function RecorderStudio({
     }
     void effect; // reserved for future visual effects
   }, [preloadAudio, scenes, language, siteName, animateCursor, secondsPerPage, effect, voicePitch, voiceSpeed, startFromIndex, onSceneChange, saveToFolder, dirHandle]);
+  void startRecording;
 
   const stop = useCallback(() => {
     stopFlagRef.current = true;
