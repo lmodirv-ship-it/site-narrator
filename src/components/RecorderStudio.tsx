@@ -115,11 +115,22 @@ export function RecorderStudio({
   const [recBytes, setRecBytes] = useState(0);
   const [recChunks, setRecChunks] = useState(0);
   const [liveFileName, setLiveFileName] = useState<string | null>(null);
+  // Conversion (webm → mp4) telemetry — shown separately from recording
+  const [convStartAt, setConvStartAt] = useState<number | null>(null);
+  const [convElapsedMs, setConvElapsedMs] = useState(0);
+  const [convProgress, setConvProgress] = useState(0); // 0..100
+  const [convPhase, setConvPhase] = useState<string>("");
+  const ffmpegRef = useRef<unknown>(null); // cached FFmpeg instance
   useEffect(() => {
     if (recStartAt === null) return;
     const id = window.setInterval(() => setRecElapsedMs(Date.now() - recStartAt), 250);
     return () => window.clearInterval(id);
   }, [recStartAt]);
+  useEffect(() => {
+    if (convStartAt === null) return;
+    const id = window.setInterval(() => setConvElapsedMs(Date.now() - convStartAt), 200);
+    return () => window.clearInterval(id);
+  }, [convStartAt]);
 
   // Real memory controls (Chromium exposes performance.memory)
   const [memBudget, setMemBudget] = useState<number>(512); // MB target
