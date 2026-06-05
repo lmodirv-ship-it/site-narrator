@@ -207,12 +207,13 @@ export function RecorderStudio({
 
   const synthesize = useServerFn(synthesizeSpeech);
 
-  // Load first page in iframe on mount
+  // Load the last viewed page (persisted), falling back to the resume scene or first scene.
   useEffect(() => {
-    if (iframeRef.current && scenes[0]) {
-      iframeRef.current.src = scenes[0].pageUrl;
-    }
-  }, [scenes]);
+    if (!iframeRef.current) return;
+    const initial = lastUrl || scenes[startFromIndex]?.pageUrl || scenes[0]?.pageUrl;
+    if (initial) iframeRef.current.src = initial;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Detect iframe blocking (best effort)
   useEffect(() => {
