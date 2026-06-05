@@ -197,7 +197,7 @@ function Index() {
         {/* Result */}
         {result && (
           <Card className="border-border/60 bg-card/70 backdrop-blur-xl shadow-xl">
-            <CardContent className="p-6 space-y-4">
+            <CardContent className="p-4 sm:p-6 space-y-4">
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2">
                   <div className="h-9 w-9 rounded-lg btn-glow grid place-items-center">
