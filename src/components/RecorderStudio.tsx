@@ -383,15 +383,20 @@ export function RecorderStudio({
         const out = (await ffmpeg.readFile("out.mp4")) as Uint8Array;
         const ab = out.buffer.slice(out.byteOffset, out.byteOffset + out.byteLength) as ArrayBuffer;
         const mp4Blob = new Blob([ab], { type: "video/mp4" });
+        const name = `${siteName}-tutorial.mp4`;
+        await saveToFolder(mp4Blob, name);
         setDownloadUrl(URL.createObjectURL(mp4Blob));
-        setDownloadName(`${siteName}-tutorial.mp4`);
-        setPhase("جاهز ✓");
+        setDownloadName(name);
+        setPhase(dirHandle ? `جاهز ✓ — تم الحفظ في المجلد المحدد` : "جاهز ✓");
       } catch (e) {
         console.error("ffmpeg failed", e);
+        const name = `${siteName}-tutorial.webm`;
+        await saveToFolder(webmBlob, name);
         setDownloadUrl(URL.createObjectURL(webmBlob));
-        setDownloadName(`${siteName}-tutorial.webm`);
+        setDownloadName(name);
         setPhase("تعذّر التحويل لـ MP4 — تم توفير WebM");
       }
+
       setProgress(100);
     } catch (e) {
       console.error(e);
