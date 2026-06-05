@@ -138,23 +138,68 @@
 }
 
 :root {
-  --brand: oklch(0.68 0.21 295);
-  --brand-2: oklch(0.74 0.18 200);
-  --gradient-brand: linear-gradient(135deg, oklch(0.68 0.21 295), oklch(0.74 0.18 200));
-  --gradient-hero: radial-gradient(1200px 600px at 80% -10%, oklch(0.68 0.21 295 / 0.22), transparent 60%),
-                   radial-gradient(900px 500px at 0% 0%, oklch(0.74 0.18 200 / 0.16), transparent 60%);
-  --shadow-glow: 0 10px 40px -10px oklch(0.68 0.21 295 / 0.55);
+  --brand: oklch(0.78 0.24 320);
+  --brand-2: oklch(0.82 0.22 195);
+  --neon-pink: oklch(0.72 0.32 350);
+  --neon-cyan: oklch(0.85 0.22 195);
+  --neon-violet: oklch(0.68 0.28 295);
+  --neon-lime: oklch(0.88 0.27 135);
+  --gradient-brand: linear-gradient(135deg, var(--neon-violet), var(--neon-cyan));
+  --gradient-hero:
+    radial-gradient(900px 500px at 85% -10%, oklch(0.72 0.32 350 / 0.35), transparent 60%),
+    radial-gradient(800px 500px at 0% 10%, oklch(0.85 0.22 195 / 0.28), transparent 60%),
+    radial-gradient(700px 400px at 50% 110%, oklch(0.68 0.28 295 / 0.30), transparent 60%);
+  --grid-color: oklch(1 0 0 / 0.06);
+  --shadow-glow: 0 0 30px oklch(0.72 0.32 350 / 0.55), 0 0 60px oklch(0.68 0.28 295 / 0.35);
+}
+
+/* Force a neon dark canvas regardless of theme toggle */
+:root {
+  --background: oklch(0.12 0.04 280);
+  --foreground: oklch(0.98 0.01 280);
+  --card: oklch(0.16 0.05 280 / 0.6);
+  --card-foreground: oklch(0.98 0.01 280);
+  --popover: oklch(0.16 0.05 280);
+  --popover-foreground: oklch(0.98 0.01 280);
+  --muted: oklch(0.22 0.05 280);
+  --muted-foreground: oklch(0.75 0.04 280);
+  --border: oklch(0.85 0.22 195 / 0.18);
+  --input: oklch(1 0 0 / 0.08);
+  --ring: var(--neon-cyan);
 }
 
 @layer base {
   * { border-color: var(--color-border); }
+  html, body { background-color: oklch(0.08 0.03 280); }
   body {
-    background-color: var(--color-background);
     color: var(--color-foreground);
-    background-image: var(--gradient-hero);
+    background-image:
+      var(--gradient-hero),
+      linear-gradient(var(--grid-color) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-color) 1px, transparent 1px),
+      radial-gradient(ellipse at center, oklch(0.14 0.05 280) 0%, oklch(0.06 0.03 280) 100%);
+    background-size: auto, 48px 48px, 48px 48px, auto;
     background-attachment: fixed;
+    position: relative;
+  }
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: -1;
+    background:
+      repeating-linear-gradient(
+        0deg,
+        transparent 0,
+        transparent 3px,
+        oklch(1 0 0 / 0.012) 3px,
+        oklch(1 0 0 / 0.012) 4px
+      );
+    mix-blend-mode: overlay;
   }
 }
+
 
 @utility btn-glow {
   background-image: var(--gradient-brand);
