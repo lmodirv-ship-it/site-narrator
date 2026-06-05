@@ -155,11 +155,23 @@ function Index() {
                 </select>
               </Field>
 
-              <Field icon={<Mic className="h-4 w-4" />} label="نوع الصوت">
-                <select className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 text-sm" value={voice} onChange={(e) => setVoice(e.target.value as Voice)}>
-                  <option value="female">أنثوي</option>
-                  <option value="male">ذكوري</option>
+              <Field icon={<Mic className="h-4 w-4" />} label="الصوت (20 خياراً)">
+                <select className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 text-sm" value={voiceId} onChange={(e) => {
+                  const v = VOICE_PRESETS.find((x) => x.id === e.target.value);
+                  if (v) { setVoiceId(v.id); setPitch(v.pitch); setSpeed(v.speed); setLanguage(v.lang.split("-")[0]); }
+                }}>
+                  {VOICE_PRESETS.map((v) => (
+                    <option key={v.id} value={v.id}>{v.name}</option>
+                  ))}
                 </select>
+              </Field>
+
+              <Field icon={<Music2 className="h-4 w-4" />} label={`الرنين / Pitch (${pitch > 0 ? "+" : ""}${pitch})`}>
+                <input type="range" min={-12} max={12} step={1} value={pitch} onChange={(e) => setPitch(Number(e.target.value))} className="w-full accent-[oklch(0.68_0.21_295)]" />
+              </Field>
+
+              <Field icon={<Gauge className="h-4 w-4" />} label={`سرعة النطق (${speed.toFixed(2)}x)`}>
+                <input type="range" min={0.7} max={1.4} step={0.05} value={speed} onChange={(e) => setSpeed(Number(e.target.value))} className="w-full accent-[oklch(0.68_0.21_295)]" />
               </Field>
 
               <Field icon={<Palette className="h-4 w-4" />} label="المؤثرات">
