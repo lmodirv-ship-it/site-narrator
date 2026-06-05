@@ -501,7 +501,7 @@ export function RecorderStudio({
       setPreparing(false);
     }
     void effect; // reserved for future visual effects
-  }, [preloadAudio, scenes, language, siteName, animateCursor, secondsPerPage, effect, voicePitch, voiceSpeed, startFromIndex, onSceneChange, saveToFolder, dirHandle]);
+  }, [preloadAudio, scenes, siteName, animateCursor, secondsPerPage, effect, voicePitch, voiceSpeed, startFromIndex, onSceneChange, saveToFolder, dirHandle]);
   void startRecording;
 
   const stop = useCallback(() => {
