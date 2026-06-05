@@ -23,6 +23,7 @@ interface Props {
   secondsPerPage: number;
   voicePitch?: number;
   voiceSpeed?: number;
+  voiceId?: string;
   startFromIndex?: number;
   onSceneChange?: (idx: number) => void;
 }
@@ -36,11 +37,42 @@ type LogEntry = {
   status: "pending" | "active" | "done";
 };
 
+// Build a Web Audio EQ chain from a voice preset so that different presets
+// actually sound different even though Google TTS only ships one base voice per language.
+function buildVoiceChain(audioCtx: AudioContext, preset: VoicePreset | undefined) {
+  const input = audioCtx.createGain();
+  let node: AudioNode = input;
+  if (preset?.highpass) {
+    const hp = audioCtx.createBiquadFilter();
+    hp.type = "highpass"; hp.frequency.value = preset.highpass; hp.Q.value = 0.7;
+    node.connect(hp); node = hp;
+  }
+  if (preset?.lowpass) {
+    const lp = audioCtx.createBiquadFilter();
+    lp.type = "lowpass"; lp.frequency.value = preset.lowpass; lp.Q.value = 0.7;
+    node.connect(lp); node = lp;
+  }
+  if (preset?.peakFreq && preset?.peakGain) {
+    const pk = audioCtx.createBiquadFilter();
+    pk.type = "peaking";
+    pk.frequency.value = preset.peakFreq;
+    pk.gain.value = preset.peakGain;
+    pk.Q.value = preset.peakQ ?? 1;
+    node.connect(pk); node = pk;
+  }
+  const out = audioCtx.createGain();
+  out.gain.value = 1.05;
+  node.connect(out);
+  return { input, output: out };
+}
+
 export function RecorderStudio({
   scenes, language, siteName, effect, secondsPerPage,
-  voicePitch = 0, voiceSpeed = 1,
+  voicePitch = 0, voiceSpeed = 1, voiceId,
   startFromIndex = 0, onSceneChange,
 }: Props) {
+  const voicePreset = VOICE_PRESETS.find((v) => v.id === voiceId);
+  const [lastUrl, setLastUrl] = usePersistentState<string>("hn:lastIframeUrl", scenes[startFromIndex]?.pageUrl ?? scenes[0]?.pageUrl ?? "");
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
