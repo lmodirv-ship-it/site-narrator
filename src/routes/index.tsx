@@ -36,7 +36,7 @@ function Index() {
   const generate = useServerFn(generateTutorial);
   const [url, setUrl] = useState("https://lovable.dev");
   const [siteName, setSiteName] = useState("Lovable");
-  const [pages, setPages] = useState(5);
+  const [pages, setPages] = useState<number>(20);
   const [quality, setQuality] = useState<Quality>("1080");
   const [language, setLanguage] = useState("ar");
   const [voice, setVoice] = useState<Voice>("female");
