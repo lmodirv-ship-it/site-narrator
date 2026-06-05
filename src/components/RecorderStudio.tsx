@@ -5,9 +5,11 @@ import { Progress } from "@/components/ui/progress";
 import {
   Play, Square, Download, Loader2, MousePointer2,
   FileVideo, Volume2, AlertCircle, Eye,
+  Cpu, Minus, Plus, FolderOpen, FolderCheck,
 } from "lucide-react";
 import type { Scene } from "@/lib/tutorial.functions";
 import { synthesizeSpeech } from "@/lib/tts.functions";
+
 
 type Effect = "none" | "zoom" | "fade";
 
