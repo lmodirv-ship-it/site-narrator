@@ -164,6 +164,8 @@ export function RecorderStudio({
   // Auto-download MP4/WebM as soon as it's ready
   useEffect(() => {
     if (!downloadUrl) return;
+    if (dirHandle) return; // already saved to chosen folder
+
     const a = document.createElement("a");
     a.href = downloadUrl;
     a.download = downloadName;
