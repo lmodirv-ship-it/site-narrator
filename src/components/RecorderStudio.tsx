@@ -109,6 +109,17 @@ export function RecorderStudio({
   const [iframeBlocked, setIframeBlocked] = useState(false);
   const [snapshotSaving, setSnapshotSaving] = useState(false);
   const snapshotSavingRef = useRef(false);
+  // Live recording telemetry (shown in the progress bar / counter UI)
+  const [recStartAt, setRecStartAt] = useState<number | null>(null);
+  const [recElapsedMs, setRecElapsedMs] = useState(0);
+  const [recBytes, setRecBytes] = useState(0);
+  const [recChunks, setRecChunks] = useState(0);
+  const [liveFileName, setLiveFileName] = useState<string | null>(null);
+  useEffect(() => {
+    if (recStartAt === null) return;
+    const id = window.setInterval(() => setRecElapsedMs(Date.now() - recStartAt), 250);
+    return () => window.clearInterval(id);
+  }, [recStartAt]);
 
   // Real memory controls (Chromium exposes performance.memory)
   const [memBudget, setMemBudget] = useState<number>(512); // MB target
@@ -637,6 +648,10 @@ export function RecorderStudio({
     setPlaying(true);
     stopFlagRef.current = false;
     recChunksRef.current = [];
+    setRecBytes(0);
+    setRecChunks(0);
+    setRecElapsedMs(0);
+    setLiveFileName(null);
 
     // Open a live writable stream in the chosen folder so the .webm grows in real time
     // while recording — the user sees a file appearing immediately after pressing Start.
@@ -646,6 +661,7 @@ export function RecorderStudio({
       const folder = dirHandleRef.current!;
       const fh = await folder.getFileHandle(liveWebmName, { create: true });
       liveWritable = await fh.createWritable();
+      setLiveFileName(liveWebmName);
       setPhase(`بدأ التسجيل المباشر في الملف: ${liveWebmName}`);
     } catch (e) {
       console.warn("live writable failed, falling back to in-memory buffering", e);
@@ -683,6 +699,8 @@ export function RecorderStudio({
       rec.ondataavailable = (e) => {
         if (e.data.size <= 0) return;
         recChunksRef.current.push(e.data);
+        setRecBytes((b) => b + e.data.size);
+        setRecChunks((c) => c + 1);
         if (liveWritable) {
           const chunk = e.data;
           writeQueue = writeQueue.then(() => liveWritable!.write(chunk)).catch((err) => {
@@ -692,6 +710,7 @@ export function RecorderStudio({
       };
       const stopped = new Promise<void>((res) => { rec.onstop = () => res(); });
       // Smaller timeslice = file grows on disk every ~500ms.
+      setRecStartAt(Date.now());
       rec.start(500);
 
       // Draw loop — slideshow of current scene
@@ -804,6 +823,7 @@ export function RecorderStudio({
     } finally {
       drawingRef.current = false;
       setPlaying(false);
+      setRecStartAt(null);
       if (liveWritable) {
         try { await liveWritable.close(); } catch { /* noop */ }
         liveWritable = null;
@@ -1098,8 +1118,32 @@ export function RecorderStudio({
         </div>
       </div>
 
-      {(phase || progress > 0) && (
-        <div className="space-y-1">
+      {(phase || progress > 0 || recStartAt !== null) && (
+        <div className="space-y-2">
+          {(recStartAt !== null || recBytes > 0) && (
+            <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border/60 bg-card/60 px-3 py-2 text-xs">
+              <span className="inline-flex items-center gap-1.5 font-medium text-red-500">
+                <span className={`relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500 ${recStartAt !== null ? "animate-pulse" : "opacity-60"}`} />
+                {recStartAt !== null ? "REC" : "تم"}
+              </span>
+              <span className="tabular-nums text-foreground">
+                {formatDuration(recElapsedMs)}
+              </span>
+              <span className="text-muted-foreground">
+                {formatBytes(recBytes)} · {recChunks} مقطع
+              </span>
+              {playing && scenes.length > 0 && (
+                <span className="text-muted-foreground">
+                  مشهد {Math.min(currentIdx + 1, scenes.length)} / {scenes.length}
+                </span>
+              )}
+              {liveFileName && (
+                <span className="ms-auto truncate text-muted-foreground" dir="ltr" title={liveFileName}>
+                  ⤓ {liveFileName}
+                </span>
+              )}
+            </div>
+          )}
           <Progress value={progress} />
           <p className="text-xs text-muted-foreground">{phase}</p>
         </div>
@@ -1125,4 +1169,21 @@ export function RecorderStudio({
       </div>
     </div>
   );
+}
+
+function formatDuration(ms: number): string {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  const mm = String(m).padStart(2, "0");
+  const ss = String(s).padStart(2, "0");
+  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 }
