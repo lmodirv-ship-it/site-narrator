@@ -380,21 +380,40 @@ export function RecorderStudio({
     const webmBlob = new Blob(chunks, { type: recMimeRef.current });
     const baseName = `${siteName}-tutorial`;
     // Try MP4 conversion; fall back to WebM if it fails.
+    setConvStartAt(Date.now());
+    setConvElapsedMs(0);
+    setConvProgress(0);
     try {
-      setPhase(`${label} — تحويل إلى MP4…`);
       const { FFmpeg } = await import("@ffmpeg/ffmpeg");
       const { fetchFile, toBlobURL } = await import("@ffmpeg/util");
-      const ffmpeg = new FFmpeg();
-      const base = "https://unpkg.com/@ffmpeg/core@0.12.10/dist/umd";
-      await ffmpeg.load({
-        coreURL: await toBlobURL(`${base}/ffmpeg-core.js`, "text/javascript"),
-        wasmURL: await toBlobURL(`${base}/ffmpeg-core.wasm`, "application/wasm"),
-      });
+      type FFmpegInstance = InstanceType<typeof FFmpeg>;
+      let ffmpeg = ffmpegRef.current as FFmpegInstance | null;
+      if (!ffmpeg) {
+        setConvPhase("تحميل محرك التحويل…");
+        ffmpeg = new FFmpeg();
+        const base = "https://unpkg.com/@ffmpeg/core@0.12.10/dist/umd";
+        await ffmpeg.load({
+          coreURL: await toBlobURL(`${base}/ffmpeg-core.js`, "text/javascript"),
+          wasmURL: await toBlobURL(`${base}/ffmpeg-core.wasm`, "application/wasm"),
+        });
+        ffmpegRef.current = ffmpeg;
+      } else {
+        setConvPhase("إعادة استخدام محرك التحويل المحمّل…");
+      }
+      // Live progress (0..1 reported by ffmpeg.wasm)
+      const onProgress = ({ progress }: { progress: number }) => {
+        const p = Math.max(0, Math.min(100, Math.round(progress * 100)));
+        setConvProgress(p);
+      };
+      ffmpeg.on("progress", onProgress);
+      setPhase(`${label} — تحويل إلى MP4…`);
+      setConvPhase("ترميز الفيديو…");
       await ffmpeg.writeFile("in.webm", await fetchFile(webmBlob));
       const args = [
         "-i", "in.webm",
         "-vf", `scale=-2:${resolutionRef.current}`,
-        "-c:v", codecRef.current, "-preset", "veryfast",
+        // ultrafast preset — biggest speed win for screen-cap content
+        "-c:v", codecRef.current, "-preset", "ultrafast", "-tune", "zerolatency",
       ];
       if (bitrateRef.current > 0) {
         args.push("-b:v", `${bitrateRef.current}k`, "-maxrate", `${Math.round(bitrateRef.current * 1.5)}k`, "-bufsize", `${bitrateRef.current * 2}k`);
@@ -402,9 +421,18 @@ export function RecorderStudio({
         args.push("-crf", String(crfRef.current));
       }
       if (codecRef.current === "libx265") args.push("-tag:v", "hvc1");
-      args.push("-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", "out.mp4");
+      args.push(
+        "-c:a", "aac", "-b:a", "128k",
+        "-movflags", "+faststart",
+        "-pix_fmt", "yuv420p",
+        "out.mp4",
+      );
       await ffmpeg.exec(args);
+      try { ffmpeg.off("progress", onProgress); } catch { /* noop */ }
       const out = (await ffmpeg.readFile("out.mp4")) as Uint8Array;
+      // Free wasm FS to keep memory down between conversions
+      try { await ffmpeg.deleteFile("in.webm"); } catch { /* noop */ }
+      try { await ffmpeg.deleteFile("out.mp4"); } catch { /* noop */ }
       const ab = out.buffer.slice(out.byteOffset, out.byteOffset + out.byteLength) as ArrayBuffer;
       const mp4Blob = new Blob([ab], { type: "video/mp4" });
       const name = `${baseName}.mp4`;
@@ -418,6 +446,8 @@ export function RecorderStudio({
         a.href = url; a.download = name;
         document.body.appendChild(a); a.click(); a.remove();
       }
+      setConvProgress(100);
+      setConvPhase(`اكتمل التحويل ✓ MP4 (${formatDuration(Date.now() - (convStartAt ?? Date.now()))})`);
       setPhase(`${label} — ${saved ? "تم حفظ نسخة في المجلد" : "جاهز للتحميل"} ✓ MP4`);
     } catch (e) {
       console.error("ffmpeg failed", e);
@@ -432,8 +462,10 @@ export function RecorderStudio({
         a.href = url; a.download = name;
         document.body.appendChild(a); a.click(); a.remove();
       }
+      setConvPhase("فشل التحويل — تم حفظ WebM بدلاً من MP4");
       setPhase(`${label} — ${saved ? "تم حفظ نسخة في المجلد" : "جاهز للتحميل"} ✓ WebM`);
     } finally {
+      setConvStartAt(null);
       snapshotSavingRef.current = false;
       setSnapshotSaving(false);
     }
