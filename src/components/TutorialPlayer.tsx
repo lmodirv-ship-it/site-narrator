@@ -53,10 +53,10 @@ export function TutorialPlayer({ scenes, language, siteName }: Props) {
       ctx.fillStyle = "#0b0b0f";
       ctx.fillRect(0, 0, W, H);
 
+      const chromeH = 36;
       const img = imagesRef.current.get(scene.screenshot);
       if (img && img.complete && img.naturalWidth > 0) {
         // Fit image into canvas preserving aspect, with browser chrome bar on top
-        const chromeH = 36;
         const availW = W;
         const availH = H - chromeH;
         const scale = Math.min(availW / img.naturalWidth, availH / img.naturalHeight);
