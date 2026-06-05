@@ -39,9 +39,12 @@ function Index() {
   const [pages, setPages] = useState<number>(20);
   const [quality, setQuality] = useState<Quality>("1080");
   const [language, setLanguage] = useState("ar");
-  const [voice, setVoice] = useState<Voice>("female");
+  const [voiceId, setVoiceId] = useState<string>(VOICE_PRESETS[0].id);
+  const [pitch, setPitch] = useState<number>(0);
+  const [speed, setSpeed] = useState<number>(1);
   const [effect, setEffect] = useState<Effect>("none");
   const [secondsPerPage, setSecondsPerPage] = useState(8);
+  const voicePreset = VOICE_PRESETS.find((v) => v.id === voiceId) ?? VOICE_PRESETS[0];
 
   const [stage, setStage] = useState("");
   const [loading, setLoading] = useState(false);
