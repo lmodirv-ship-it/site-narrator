@@ -103,7 +103,8 @@ function Index() {
           </p>
         </header>
 
-        {/* Form */}
+        {/* Form — hidden once generation completes */}
+        {!result && (
         <Card className="border-border/60 bg-card/70 backdrop-blur-xl shadow-xl">
           <CardContent className="p-4 sm:p-6">
             <form onSubmit={onSubmit} className="grid gap-4 md:grid-cols-3">
