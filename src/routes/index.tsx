@@ -83,6 +83,7 @@ function Index() {
 
   return (
     <div dir="rtl" className="min-h-screen text-foreground">
+      <Particles />
       <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
         <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-brand/20 blur-3xl animate-float" />
         <div className="absolute top-40 -right-32 h-96 w-96 rounded-full bg-brand-2/20 blur-3xl animate-float" style={{ animationDelay: "1s" }} />
@@ -95,8 +96,9 @@ function Index() {
             <span className="text-muted-foreground">تسجيل شاشة حقيقي · صوت شرح · MP4</span>
           </div>
           <h1 className="text-4xl sm:text-6xl font-black tracking-tight">
-            <span className="neon-text animate-flicker">Hn-MAKER</span>
+            <span className="neon-text glitch-text">Hn-MAKER</span>
           </h1>
+
           <p className="max-w-2xl mx-auto text-xs sm:text-sm text-muted-foreground">
             ضع الرابط، اختر الإعدادات، ثم ابدأ التسجيل — يتنقل النظام داخل الموقع الحقيقي
             ويصنع فيديو شرح بصوت ومؤشر متحرك.
