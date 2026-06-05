@@ -8,9 +8,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { RecorderStudio } from "@/components/RecorderStudio";
+import { Particles } from "@/components/Particles";
 import { generateTutorial, type GenerateResult } from "@/lib/tutorial.functions";
 import { MY_LOVABLE_PROJECTS } from "@/lib/my-projects";
 import { VOICE_PRESETS } from "@/lib/voices";
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -81,6 +83,7 @@ function Index() {
 
   return (
     <div dir="rtl" className="min-h-screen text-foreground">
+      <Particles />
       <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
         <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-brand/20 blur-3xl animate-float" />
         <div className="absolute top-40 -right-32 h-96 w-96 rounded-full bg-brand-2/20 blur-3xl animate-float" style={{ animationDelay: "1s" }} />
@@ -93,8 +96,9 @@ function Index() {
             <span className="text-muted-foreground">تسجيل شاشة حقيقي · صوت شرح · MP4</span>
           </div>
           <h1 className="text-4xl sm:text-6xl font-black tracking-tight">
-            <span className="neon-text animate-flicker">Hn-MAKER</span>
+            <span className="neon-text glitch-text">Hn-MAKER</span>
           </h1>
+
           <p className="max-w-2xl mx-auto text-xs sm:text-sm text-muted-foreground">
             ضع الرابط، اختر الإعدادات، ثم ابدأ التسجيل — يتنقل النظام داخل الموقع الحقيقي
             ويصنع فيديو شرح بصوت ومؤشر متحرك.
@@ -103,7 +107,7 @@ function Index() {
 
         {/* Form — hidden once generation completes */}
         {!result && (
-        <Card className="neon-card border-0 shadow-xl animate-rise" style={{ animationDelay: ".15s" }}>
+        <Card className="neon-card hover-tilt border-0 shadow-xl animate-rise" style={{ animationDelay: ".15s" }}>
 
           <CardContent className="p-4 sm:p-6">
             <form onSubmit={onSubmit} className="grid gap-4 md:grid-cols-3">
@@ -223,7 +227,7 @@ function Index() {
 
         {/* Studio */}
         {result && (
-          <Card className="neon-card border-0 shadow-xl animate-rise">
+          <Card className="neon-card hover-tilt border-0 shadow-xl animate-rise">
             <CardContent className="p-4 sm:p-6">
               <div className="flex items-center gap-2 mb-4">
                 <div className="h-9 w-9 rounded-lg btn-glow grid place-items-center">
