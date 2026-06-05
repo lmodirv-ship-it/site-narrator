@@ -56,11 +56,13 @@ export function RecorderStudio({
   const [progress, setProgress] = useState(0);
   const [recording, setRecording] = useState(false);
   const [preparing, setPreparing] = useState(false);
+  const [playing, setPlaying] = useState(false);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [downloadName, setDownloadName] = useState("tutorial.mp4");
   const [error, setError] = useState<string | null>(null);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [iframeBlocked, setIframeBlocked] = useState(false);
+
 
   const synthesize = useServerFn(synthesizeSpeech);
 
