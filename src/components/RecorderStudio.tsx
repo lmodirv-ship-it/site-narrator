@@ -324,15 +324,20 @@ export function RecorderStudio({
             <Loader2 className="h-3 w-3 animate-spin" /> تجهيز…
           </span>
         )}
-        {downloadUrl && (
-          <a
-            href={downloadUrl}
-            download={downloadName}
-            className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-          >
-            <Download className="h-4 w-4" /> تحميل {downloadName}
-          </a>
-        )}
+        <a
+          href={downloadUrl ?? "#"}
+          download={downloadName}
+          onClick={(e) => { if (!downloadUrl) e.preventDefault(); }}
+          aria-disabled={!downloadUrl}
+          className={`inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold shadow transition ${
+            downloadUrl
+              ? "bg-green-600 text-white hover:bg-green-700 animate-pulse"
+              : "bg-muted text-muted-foreground cursor-not-allowed opacity-60"
+          }`}
+        >
+          <Download className="h-4 w-4" />
+          {downloadUrl ? `تحميل الفيديو (${downloadName})` : "تحميل الفيديو (غير جاهز)"}
+        </a>
         <span className="text-xs text-muted-foreground ms-auto">
           المشهد {currentIdx + 1} / {scenes.length}
         </span>
