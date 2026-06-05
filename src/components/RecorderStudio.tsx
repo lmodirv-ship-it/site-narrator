@@ -643,6 +643,10 @@ export function RecorderStudio({
     setPlaying(true);
     stopFlagRef.current = false;
     recChunksRef.current = [];
+    setRecBytes(0);
+    setRecChunks(0);
+    setRecElapsedMs(0);
+    setLiveFileName(null);
 
     // Open a live writable stream in the chosen folder so the .webm grows in real time
     // while recording — the user sees a file appearing immediately after pressing Start.
@@ -652,6 +656,7 @@ export function RecorderStudio({
       const folder = dirHandleRef.current!;
       const fh = await folder.getFileHandle(liveWebmName, { create: true });
       liveWritable = await fh.createWritable();
+      setLiveFileName(liveWebmName);
       setPhase(`بدأ التسجيل المباشر في الملف: ${liveWebmName}`);
     } catch (e) {
       console.warn("live writable failed, falling back to in-memory buffering", e);
@@ -689,6 +694,8 @@ export function RecorderStudio({
       rec.ondataavailable = (e) => {
         if (e.data.size <= 0) return;
         recChunksRef.current.push(e.data);
+        setRecBytes((b) => b + e.data.size);
+        setRecChunks((c) => c + 1);
         if (liveWritable) {
           const chunk = e.data;
           writeQueue = writeQueue.then(() => liveWritable!.write(chunk)).catch((err) => {
@@ -698,6 +705,7 @@ export function RecorderStudio({
       };
       const stopped = new Promise<void>((res) => { rec.onstop = () => res(); });
       // Smaller timeslice = file grows on disk every ~500ms.
+      setRecStartAt(Date.now());
       rec.start(500);
 
       // Draw loop — slideshow of current scene
