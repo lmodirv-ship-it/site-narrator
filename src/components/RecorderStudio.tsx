@@ -985,6 +985,11 @@ export function RecorderStudio({
             {logs.map((l) => (
               <li
                 key={l.idx}
+                ref={(el) => {
+                  if (el && l.status === "active") {
+                    el.scrollIntoView({ behavior: "smooth", block: "center" });
+                  }
+                }}
                 className={`rounded-lg border p-2.5 transition ${
                   l.status === "active"
                     ? "border-brand bg-brand/10 shadow-lg shadow-brand/20"
