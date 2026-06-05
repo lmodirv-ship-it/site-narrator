@@ -114,9 +114,9 @@ function Index() {
                   value={level}
                   onChange={(e) => setLevel(e.target.value as Level)}
                 >
-                  <option value="quick">سريع (3 صفحات)</option>
-                  <option value="medium">متوسط (5 صفحات)</option>
-                  <option value="full">كامل (8 صفحات)</option>
+                  <option value="quick">سريع (حتى 10 صفحات)</option>
+                  <option value="medium">متوسط (حتى 30 صفحة)</option>
+                  <option value="full">كامل (حتى 120 صفحة)</option>
                 </select>
               </div>
               <div className="md:col-span-2 flex items-center gap-3">
@@ -152,8 +152,8 @@ function Index() {
         )}
 
         <footer className="text-xs text-muted-foreground pt-4">
-          الصوت الحالي: متصفح (Web Speech API) مجاناً ومؤقتاً. المرحلة الثانية:
-          ربط ElevenLabs لصوت بشري مدمج داخل MP4.
+          الإخراج: MP4 (H.264 + AAC) حتى 4K، مع صوت بشري مدمج عبر Google TTS
+          مجاناً. يمكن ربط ElevenLabs لاحقاً للحصول على صوت أكثر طبيعية.
         </footer>
       </div>
     </div>
