@@ -9,6 +9,8 @@ import {
 } from "lucide-react";
 import type { Scene } from "@/lib/tutorial.functions";
 import { synthesizeSpeech } from "@/lib/tts.functions";
+import { VOICE_PRESETS, type VoicePreset } from "@/lib/voices";
+import { usePersistentState } from "@/hooks/use-persistent-state";
 
 
 type Effect = "none" | "zoom" | "fade";
