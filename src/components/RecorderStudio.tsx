@@ -17,8 +17,10 @@ interface Props {
   siteName: string;
   effect: Effect;
   secondsPerPage: number;
-  voicePitch?: number;  // semitones, applied via detune (cents)
-  voiceSpeed?: number;  // playbackRate multiplier
+  voicePitch?: number;
+  voiceSpeed?: number;
+  startFromIndex?: number;
+  onSceneChange?: (idx: number) => void;
 }
 
 type LogEntry = {
@@ -33,7 +35,9 @@ type LogEntry = {
 export function RecorderStudio({
   scenes, language, siteName, effect, secondsPerPage,
   voicePitch = 0, voiceSpeed = 1,
+  startFromIndex = 0, onSceneChange,
 }: Props) {
+
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const cursorRef = useRef<HTMLDivElement>(null);
@@ -214,10 +218,11 @@ export function RecorderStudio({
       setPhase("جارٍ التسجيل…");
 
       // 4) Walk through scenes
-      for (let i = 0; i < scenes.length; i++) {
+      for (let i = startFromIndex; i < scenes.length; i++) {
+
         if (stopFlagRef.current) break;
         const scene = scenes[i];
-        setCurrentIdx(i);
+        setCurrentIdx(i); onSceneChange?.(i);
         setLogStatus(i, "active");
         setProgress(30 + (i / scenes.length) * 60);
 
@@ -315,7 +320,7 @@ export function RecorderStudio({
       setPreparing(false);
     }
     void effect; // reserved for future visual effects
-  }, [preloadAudio, scenes, language, siteName, animateCursor, secondsPerPage, effect, voicePitch, voiceSpeed]);
+  }, [preloadAudio, scenes, language, siteName, animateCursor, secondsPerPage, effect, voicePitch, voiceSpeed, startFromIndex, onSceneChange]);
 
   const stop = useCallback(() => {
     stopFlagRef.current = true;
@@ -340,10 +345,11 @@ export function RecorderStudio({
       if (stopFlagRef.current) { setPlaying(false); return; }
 
       setPhase("جارٍ التشغيل…");
-      for (let i = 0; i < scenes.length; i++) {
+      for (let i = startFromIndex; i < scenes.length; i++) {
+
         if (stopFlagRef.current) break;
         const scene = scenes[i];
-        setCurrentIdx(i);
+        setCurrentIdx(i); onSceneChange?.(i);
         setLogStatus(i, "active");
         setProgress(30 + (i / scenes.length) * 70);
 
@@ -386,7 +392,7 @@ export function RecorderStudio({
     } finally {
       setPlaying(false);
     }
-  }, [preloadAudio, scenes, animateCursor, secondsPerPage, voicePitch, voiceSpeed]);
+  }, [preloadAudio, scenes, animateCursor, secondsPerPage, voicePitch, voiceSpeed, startFromIndex, onSceneChange]);
 
   // Auto-start playback on mount (no screen-share prompt)
   const startedRef = useRef(false);

@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { usePersistentState } from "@/hooks/use-persistent-state";
+
 import {
   Sparkles, Globe, Languages, Wand2, Loader2, Film,
   Mic, MousePointer2, AlertCircle, Gauge, Hash, Palette, ArrowRight, Music2,
@@ -38,35 +40,39 @@ function pagesToLevel(n: number): Level {
 
 function Index() {
   const generate = useServerFn(generateTutorial);
-  const [url, setUrl] = useState("https://lovable.dev");
-  const [siteName, setSiteName] = useState("Lovable");
-  const [pages, setPages] = useState<number>(20);
-  const [quality, setQuality] = useState<Quality>("1080");
-  const [language, setLanguage] = useState("ar");
-  const [voiceId, setVoiceId] = useState<string>(VOICE_PRESETS[0].id);
-  const [pitch, setPitch] = useState<number>(0);
-  const [speed, setSpeed] = useState<number>(1);
-  const [effect, setEffect] = useState<Effect>("none");
-  const [secondsPerPage, setSecondsPerPage] = useState(8);
+  const [url, setUrl] = usePersistentState("hn:url", "https://lovable.dev");
+  const [siteName, setSiteName] = usePersistentState("hn:siteName", "Lovable");
+  const [pages, setPages] = usePersistentState<number>("hn:pages", 20);
+  const [quality, setQuality] = usePersistentState<Quality>("hn:quality", "1080");
+  const [language, setLanguage] = usePersistentState("hn:language", "ar");
+  const [voiceId, setVoiceId] = usePersistentState<string>("hn:voiceId", VOICE_PRESETS[0].id);
+  const [pitch, setPitch] = usePersistentState<number>("hn:pitch", 0);
+  const [speed, setSpeed] = usePersistentState<number>("hn:speed", 1);
+  const [effect, setEffect] = usePersistentState<Effect>("hn:effect", "none");
+  const [secondsPerPage, setSecondsPerPage] = usePersistentState<number>("hn:spp", 8);
   const voicePreset = VOICE_PRESETS.find((v) => v.id === voiceId) ?? VOICE_PRESETS[0];
 
   const [stage, setStage] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<GenerateResult | null>(null);
+  const [result, setResult, clearResult] = usePersistentState<GenerateResult | null>("hn:result", null);
+  const [resumeFrom, setResumeFrom, clearResumeFrom] = usePersistentState<number>("hn:resumeFrom", 0);
+  const [pendingJob, setPendingJob, clearPendingJob] = usePersistentState<{
+    url: string; siteName: string; language: string; pages: number; startedAt: number;
+  } | null>("hn:pendingJob", null);
+  const [resumedBanner, setResumedBanner] = useState(false);
 
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+
+  const runGeneration = async (u: string, name: string, lang: string, p: number) => {
     setError(null);
     setResult(null);
+    setResumeFrom(0);
     setLoading(true);
     setStage("جارٍ تحليل الموقع والتقاط الصفحات…");
+    setPendingJob({ url: u, siteName: name, language: lang, pages: p, startedAt: Date.now() });
     try {
-      const r = await generate({
-        data: { url, siteName, language, level: pagesToLevel(pages) },
-      });
-      // trim to user-requested page count
-      const limit = pages >= 9999 ? r.scenes.length : pages;
+      const r = await generate({ data: { url: u, siteName: name, language: lang, level: pagesToLevel(p) } });
+      const limit = p >= 9999 ? r.scenes.length : p;
       const trimmed: GenerateResult = {
         ...r,
         scenes: r.scenes.slice(0, limit),
@@ -79,9 +85,39 @@ function Index() {
       setStage("");
     } finally {
       setLoading(false);
+      clearPendingJob();
     }
-    void quality; // forwarded for future use
+    void quality;
   };
+
+  const onSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    void runGeneration(url, siteName, language, pages);
+  };
+
+  // Auto-resume: if the tab was closed mid-analysis, re-run with saved inputs.
+  // If a result is already cached with a non-zero resumeFrom, show a banner.
+  useEffect(() => {
+    if (pendingJob && !result && !loading) {
+      setResumedBanner(true);
+      void runGeneration(pendingJob.url, pendingJob.siteName, pendingJob.language, pendingJob.pages);
+    } else if (result && resumeFrom > 0) {
+      setResumedBanner(true);
+    }
+    // run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const resetSession = () => {
+    clearResult();
+    clearResumeFrom();
+    clearPendingJob();
+    setResult(null);
+    setResumeFrom(0);
+    setStage("");
+    setResumedBanner(false);
+  };
+
 
   return (
     <div dir="rtl" className="min-h-screen text-foreground">
@@ -109,7 +145,24 @@ function Index() {
           </p>
         </header>
 
+        {resumedBanner && (
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-brand/40 bg-brand/10 px-4 py-3 text-sm animate-rise shadow-[0_0_24px_-6px_oklch(0.72_0.32_350/.55)]">
+            <span>
+              تم استئناف جلستك السابقة تلقائياً
+              {result && resumeFrom > 0 && ` — سيكمل التشغيل من المشهد ${resumeFrom + 1}`}
+            </span>
+            <button
+              type="button"
+              onClick={resetSession}
+              className="rounded-md border border-border bg-card/60 px-3 py-1 text-xs hover:bg-card transition"
+            >
+              بدء جديد
+            </button>
+          </div>
+        )}
+
         {/* Form — hidden once generation completes */}
+
         {!result && (
         <Card className="neon-card hover-tilt border-0 shadow-xl animate-rise" style={{ animationDelay: ".15s" }}>
 
@@ -245,7 +298,7 @@ function Index() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => { setResult(null); setStage(""); }}
+                  onClick={resetSession}
                   className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card/60 px-3 py-1.5 text-xs hover:bg-card transition"
                 >
                   <ArrowRight className="h-3.5 w-3.5" /> رجوع للإعدادات
@@ -259,7 +312,10 @@ function Index() {
                 secondsPerPage={secondsPerPage}
                 voicePitch={pitch}
                 voiceSpeed={speed}
+                startFromIndex={resumeFrom}
+                onSceneChange={(i) => setResumeFrom(i)}
               />
+
             </CardContent>
           </Card>
         )}
