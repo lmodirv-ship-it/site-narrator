@@ -64,6 +64,50 @@ function Index() {
     url: string; siteName: string; language: string; pages: number; startedAt: number;
   } | null>("hn:pendingJob", null);
   const [resumedBanner, setResumedBanner] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
+  const previewRef = useRef<{ ctx: AudioContext; src: AudioBufferSourceNode } | null>(null);
+
+  const stopPreview = () => {
+    try { previewRef.current?.src.stop(); } catch { /* noop */ }
+    try { void previewRef.current?.ctx.close(); } catch { /* noop */ }
+    previewRef.current = null;
+    setPreviewing(false);
+  };
+
+  const playPreview = async () => {
+    if (previewing) { stopPreview(); return; }
+    setPreviewing(true);
+    try {
+      const samples: Record<string, string> = {
+        ar: "مرحبا، هذه عينة صوتية قصيرة لاختبار الصوت المحدد.",
+        en: "Hello, this is a short voice sample to preview the selected voice.",
+        fr: "Bonjour, ceci est un court échantillon vocal pour prévisualiser la voix.",
+        es: "Hola, esta es una muestra corta de voz para previsualizar.",
+        de: "Hallo, dies ist eine kurze Sprachprobe zur Vorschau.",
+      };
+      const langKey = voicePreset.lang.split("-")[0];
+      const text = samples[langKey] ?? samples.en;
+      const res = await ttsSynth({ data: { text, lang: voicePreset.lang, voiceId: voicePreset.id } });
+      const bin = atob(res.base64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const ctx = new AudioContext();
+      const buf = await ctx.decodeAudioData(bytes.buffer);
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.detune.value = pitch * 100;
+      src.playbackRate.value = speed;
+      src.connect(ctx.destination);
+      src.onended = () => stopPreview();
+      previewRef.current = { ctx, src };
+      src.start();
+    } catch (e) {
+      console.error(e);
+      setError(e instanceof Error ? e.message : "تعذر تشغيل العينة");
+      setPreviewing(false);
+    }
+  };
+
 
 
   const runGeneration = async (u: string, name: string, lang: string, p: number) => {
