@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { RecorderStudio } from "@/components/RecorderStudio";
 import { generateTutorial, type GenerateResult } from "@/lib/tutorial.functions";
+import { MY_LOVABLE_PROJECTS } from "@/lib/my-projects";
 
 export const Route = createFileRoute("/")({
   head: () => ({
