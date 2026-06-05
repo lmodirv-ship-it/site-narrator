@@ -2,8 +2,39 @@
 // The server runs separately on the user's machine — see `local-server/README.md`.
 // This file is browser-safe (uses fetch + EventSource only).
 
+type HnElectronBridge = {
+  isElectron: true;
+  version?: string;
+  localServerUrl?: string;
+  restartLocalServer: () => Promise<{ ok: boolean }>;
+  openExternal: (url: string) => Promise<{ ok: boolean }>;
+};
+
+function getBridge(): HnElectronBridge | null {
+  if (typeof window === "undefined") return null;
+  const w = window as unknown as { hnElectron?: HnElectronBridge };
+  return w.hnElectron ?? null;
+}
+
+export function isElectronApp(): boolean {
+  return !!getBridge();
+}
+
+export async function restartLocalServerViaBridge(): Promise<boolean> {
+  const b = getBridge();
+  if (!b) return false;
+  try { const r = await b.restartLocalServer(); return !!r?.ok; } catch { return false; }
+}
+
+export async function openExternalLink(url: string): Promise<void> {
+  const b = getBridge();
+  if (b) { await b.openExternal(url); return; }
+  if (typeof window !== "undefined") window.open(url, "_blank", "noopener,noreferrer");
+}
+
 export const LOCAL_SERVER_URL =
   (typeof window !== "undefined" && (window as unknown as { __HN_LOCAL_SERVER__?: string }).__HN_LOCAL_SERVER__) ||
+  getBridge()?.localServerUrl ||
   "http://localhost:5174";
 
 export type LocalJob = {
