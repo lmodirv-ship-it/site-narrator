@@ -804,6 +804,10 @@ export function RecorderStudio({
     } finally {
       drawingRef.current = false;
       setPlaying(false);
+      if (liveWritable) {
+        try { await liveWritable.close(); } catch { /* noop */ }
+        liveWritable = null;
+      }
     }
   }, [preloadAudio, scenes, animateCursor, secondsPerPage, voicePitch, voiceSpeed, voicePreset, startFromIndex, onSceneChange, siteName, finalizeDownloadFromChunks, setLastUrl, pickFolder]);
 
