@@ -440,6 +440,7 @@ export function RecorderStudio({
     }
     void effect; // reserved for future visual effects
   }, [preloadAudio, scenes, language, siteName, animateCursor, secondsPerPage, effect, voicePitch, voiceSpeed, startFromIndex, onSceneChange, saveToFolder, dirHandle]);
+  void startRecording;
 
   const stop = useCallback(() => {
     stopFlagRef.current = true;
@@ -533,14 +534,9 @@ export function RecorderStudio({
             <Square className="h-4 w-4" /> إيقاف التشغيل
           </Button>
         ) : !recording && !preparing ? (
-          <>
-            <Button onClick={startPlayback} className="gap-2" variant="secondary">
-              <Play className="h-4 w-4" /> إعادة التشغيل
-            </Button>
-            <Button onClick={startRecording} className="gap-2">
-              <FileVideo className="h-4 w-4" /> تسجيل MP4 (يطلب مشاركة التبويب)
-            </Button>
-          </>
+          <Button onClick={startPlayback} className="gap-2" variant="secondary">
+            <Play className="h-4 w-4" /> إعادة التشغيل
+          </Button>
         ) : (
           <Button variant="destructive" onClick={stop} className="gap-2">
             <Square className="h-4 w-4" /> إيقاف
@@ -821,9 +817,8 @@ export function RecorderStudio({
 
       <div className="rounded-lg border border-border/60 bg-muted/30 p-3 text-xs text-muted-foreground leading-relaxed">
         <FileVideo className="inline h-3.5 w-3.5 me-1" />
-        كيف يعمل: عند الضغط على «ابدأ التسجيل» سيطلب المتصفح اختيار التبويب
-        لمشاركته — اختر <b>This Tab</b>. سيتنقل النظام تلقائياً بين الصفحات،
-        ويُحرّك المؤشر، ويُشغّل صوت الشرح، ثم يحوّل التسجيل إلى MP4 جاهز للتحميل.
+        وضع المعاينة: يتنقل النظام تلقائياً بين الصفحات، ويُحرّك المؤشر،
+        ويُشغّل صوت الشرح — بدون طلب مشاركة التبويب.
       </div>
     </div>
   );
