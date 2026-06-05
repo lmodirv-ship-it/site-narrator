@@ -76,7 +76,7 @@ function Index() {
     } finally {
       setLoading(false);
     }
-    void voice; void quality; // forwarded for future use
+    void quality; // forwarded for future use
   };
 
   return (
