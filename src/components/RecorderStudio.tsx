@@ -816,9 +816,8 @@ export function RecorderStudio({
 
       <div className="rounded-lg border border-border/60 bg-muted/30 p-3 text-xs text-muted-foreground leading-relaxed">
         <FileVideo className="inline h-3.5 w-3.5 me-1" />
-        كيف يعمل: عند الضغط على «ابدأ التسجيل» سيطلب المتصفح اختيار التبويب
-        لمشاركته — اختر <b>This Tab</b>. سيتنقل النظام تلقائياً بين الصفحات،
-        ويُحرّك المؤشر، ويُشغّل صوت الشرح، ثم يحوّل التسجيل إلى MP4 جاهز للتحميل.
+        وضع المعاينة: يتنقل النظام تلقائياً بين الصفحات، ويُحرّك المؤشر،
+        ويُشغّل صوت الشرح — بدون طلب مشاركة التبويب.
       </div>
     </div>
   );
