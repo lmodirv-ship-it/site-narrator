@@ -220,6 +220,7 @@ function Index() {
             )}
           </CardContent>
         </Card>
+        )}
 
         {/* Studio */}
         {result && (
