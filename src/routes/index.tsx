@@ -59,10 +59,11 @@ function Index() {
         data: { url, siteName, language, level: pagesToLevel(pages) },
       });
       // trim to user-requested page count
+      const limit = pages >= 9999 ? r.scenes.length : pages;
       const trimmed: GenerateResult = {
         ...r,
-        scenes: r.scenes.slice(0, pages),
-        totalSeconds: r.scenes.slice(0, pages).reduce((a, s) => a + Math.max(6, s.narration.split(/\s+/).length * 0.42), 0),
+        scenes: r.scenes.slice(0, limit),
+        totalSeconds: r.scenes.slice(0, limit).reduce((a, s) => a + Math.max(6, s.narration.split(/\s+/).length * 0.42), 0),
       };
       setResult(trimmed);
       setStage("جاهز — اضغط ابدأ التسجيل");
