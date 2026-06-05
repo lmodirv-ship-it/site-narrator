@@ -223,7 +223,7 @@ function Index() {
 
         {/* Studio */}
         {result && (
-          <Card className="border-border/60 bg-card/70 backdrop-blur-xl shadow-xl">
+          <Card className="neon-card border-0 shadow-xl animate-rise">
             <CardContent className="p-4 sm:p-6">
               <div className="flex items-center gap-2 mb-4">
                 <div className="h-9 w-9 rounded-lg btn-glow grid place-items-center">
