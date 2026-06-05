@@ -115,11 +115,22 @@ export function RecorderStudio({
   const [recBytes, setRecBytes] = useState(0);
   const [recChunks, setRecChunks] = useState(0);
   const [liveFileName, setLiveFileName] = useState<string | null>(null);
+  // Conversion (webm → mp4) telemetry — shown separately from recording
+  const [convStartAt, setConvStartAt] = useState<number | null>(null);
+  const [convElapsedMs, setConvElapsedMs] = useState(0);
+  const [convProgress, setConvProgress] = useState(0); // 0..100
+  const [convPhase, setConvPhase] = useState<string>("");
+  const ffmpegRef = useRef<unknown>(null); // cached FFmpeg instance
   useEffect(() => {
     if (recStartAt === null) return;
     const id = window.setInterval(() => setRecElapsedMs(Date.now() - recStartAt), 250);
     return () => window.clearInterval(id);
   }, [recStartAt]);
+  useEffect(() => {
+    if (convStartAt === null) return;
+    const id = window.setInterval(() => setConvElapsedMs(Date.now() - convStartAt), 200);
+    return () => window.clearInterval(id);
+  }, [convStartAt]);
 
   // Real memory controls (Chromium exposes performance.memory)
   const [memBudget, setMemBudget] = useState<number>(512); // MB target
@@ -369,21 +380,41 @@ export function RecorderStudio({
     const webmBlob = new Blob(chunks, { type: recMimeRef.current });
     const baseName = `${siteName}-tutorial`;
     // Try MP4 conversion; fall back to WebM if it fails.
+    const convStarted = Date.now();
+    setConvStartAt(convStarted);
+    setConvElapsedMs(0);
+    setConvProgress(0);
     try {
-      setPhase(`${label} — تحويل إلى MP4…`);
       const { FFmpeg } = await import("@ffmpeg/ffmpeg");
       const { fetchFile, toBlobURL } = await import("@ffmpeg/util");
-      const ffmpeg = new FFmpeg();
-      const base = "https://unpkg.com/@ffmpeg/core@0.12.10/dist/umd";
-      await ffmpeg.load({
-        coreURL: await toBlobURL(`${base}/ffmpeg-core.js`, "text/javascript"),
-        wasmURL: await toBlobURL(`${base}/ffmpeg-core.wasm`, "application/wasm"),
-      });
+      type FFmpegInstance = InstanceType<typeof FFmpeg>;
+      let ffmpeg = ffmpegRef.current as FFmpegInstance | null;
+      if (!ffmpeg) {
+        setConvPhase("تحميل محرك التحويل…");
+        ffmpeg = new FFmpeg();
+        const base = "https://unpkg.com/@ffmpeg/core@0.12.10/dist/umd";
+        await ffmpeg.load({
+          coreURL: await toBlobURL(`${base}/ffmpeg-core.js`, "text/javascript"),
+          wasmURL: await toBlobURL(`${base}/ffmpeg-core.wasm`, "application/wasm"),
+        });
+        ffmpegRef.current = ffmpeg;
+      } else {
+        setConvPhase("إعادة استخدام محرك التحويل المحمّل…");
+      }
+      // Live progress (0..1 reported by ffmpeg.wasm)
+      const onProgress = ({ progress }: { progress: number }) => {
+        const p = Math.max(0, Math.min(100, Math.round(progress * 100)));
+        setConvProgress(p);
+      };
+      ffmpeg.on("progress", onProgress);
+      setPhase(`${label} — تحويل إلى MP4…`);
+      setConvPhase("ترميز الفيديو…");
       await ffmpeg.writeFile("in.webm", await fetchFile(webmBlob));
       const args = [
         "-i", "in.webm",
         "-vf", `scale=-2:${resolutionRef.current}`,
-        "-c:v", codecRef.current, "-preset", "veryfast",
+        // ultrafast preset — biggest speed win for screen-cap content
+        "-c:v", codecRef.current, "-preset", "ultrafast", "-tune", "zerolatency",
       ];
       if (bitrateRef.current > 0) {
         args.push("-b:v", `${bitrateRef.current}k`, "-maxrate", `${Math.round(bitrateRef.current * 1.5)}k`, "-bufsize", `${bitrateRef.current * 2}k`);
@@ -391,9 +422,18 @@ export function RecorderStudio({
         args.push("-crf", String(crfRef.current));
       }
       if (codecRef.current === "libx265") args.push("-tag:v", "hvc1");
-      args.push("-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", "out.mp4");
+      args.push(
+        "-c:a", "aac", "-b:a", "128k",
+        "-movflags", "+faststart",
+        "-pix_fmt", "yuv420p",
+        "out.mp4",
+      );
       await ffmpeg.exec(args);
+      try { ffmpeg.off("progress", onProgress); } catch { /* noop */ }
       const out = (await ffmpeg.readFile("out.mp4")) as Uint8Array;
+      // Free wasm FS to keep memory down between conversions
+      try { await ffmpeg.deleteFile("in.webm"); } catch { /* noop */ }
+      try { await ffmpeg.deleteFile("out.mp4"); } catch { /* noop */ }
       const ab = out.buffer.slice(out.byteOffset, out.byteOffset + out.byteLength) as ArrayBuffer;
       const mp4Blob = new Blob([ab], { type: "video/mp4" });
       const name = `${baseName}.mp4`;
@@ -407,6 +447,8 @@ export function RecorderStudio({
         a.href = url; a.download = name;
         document.body.appendChild(a); a.click(); a.remove();
       }
+      setConvProgress(100);
+      setConvPhase(`اكتمل التحويل ✓ MP4 (${formatDuration(Date.now() - convStarted)})`);
       setPhase(`${label} — ${saved ? "تم حفظ نسخة في المجلد" : "جاهز للتحميل"} ✓ MP4`);
     } catch (e) {
       console.error("ffmpeg failed", e);
@@ -421,8 +463,10 @@ export function RecorderStudio({
         a.href = url; a.download = name;
         document.body.appendChild(a); a.click(); a.remove();
       }
+      setConvPhase("فشل التحويل — تم حفظ WebM بدلاً من MP4");
       setPhase(`${label} — ${saved ? "تم حفظ نسخة في المجلد" : "جاهز للتحميل"} ✓ WebM`);
     } finally {
+      setConvStartAt(null);
       snapshotSavingRef.current = false;
       setSnapshotSaving(false);
     }
@@ -926,7 +970,7 @@ export function RecorderStudio({
         </div>
       </div>
 
-      {(phase || progress > 0 || recStartAt !== null) && (
+      {(phase || progress > 0 || recStartAt !== null || convStartAt !== null || convPhase) && (
         <div className="space-y-2">
           {(recStartAt !== null || recBytes > 0) && (
             <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border/60 bg-card/60 px-3 py-2 text-xs">
@@ -948,6 +992,31 @@ export function RecorderStudio({
               {liveFileName && (
                 <span className="ms-auto truncate text-muted-foreground" dir="ltr" title={liveFileName}>
                   ⤓ {liveFileName}
+                </span>
+              )}
+            </div>
+          )}
+          {(convStartAt !== null || convPhase) && (
+            <div className="flex flex-wrap items-center gap-3 rounded-lg border border-brand/40 bg-brand/5 px-3 py-2 text-xs">
+              <span className="inline-flex items-center gap-1.5 font-medium text-brand">
+                {convStartAt !== null ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <FileVideo className="h-3.5 w-3.5" />
+                )}
+                {convStartAt !== null ? "تحويل MP4" : "MP4"}
+              </span>
+              <span className="tabular-nums text-foreground">{formatDuration(convElapsedMs)}</span>
+              <span className="tabular-nums text-muted-foreground">{convProgress}%</span>
+              <div className="relative h-1.5 flex-1 min-w-[120px] overflow-hidden rounded-full bg-brand/15">
+                <div
+                  className="absolute inset-y-0 left-0 bg-brand transition-[width] duration-200"
+                  style={{ width: `${convProgress}%` }}
+                />
+              </div>
+              {convPhase && (
+                <span className="text-muted-foreground truncate max-w-[40%]" title={convPhase}>
+                  {convPhase}
                 </span>
               )}
             </div>
