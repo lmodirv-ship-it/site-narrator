@@ -758,7 +758,7 @@ export function RecorderStudio({
       }
 
       drawingRef.current = false;
-      try { rec.state !== "inactive" && rec.stop(); } catch { /* noop */ }
+      try { if (rec.state !== "inactive") rec.stop(); } catch { /* noop */ }
       await stopped;
       audioCtx.close();
       setPhase("اكتمل التشغيل — تجهيز الملف…");
