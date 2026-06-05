@@ -3,13 +3,14 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import {
   Sparkles, Globe, Languages, Wand2, Loader2, Film,
-  Mic, MousePointer2, AlertCircle, Gauge, Hash, Palette,
+  Mic, MousePointer2, AlertCircle, Gauge, Hash, Palette, ArrowRight, Music2,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { RecorderStudio } from "@/components/RecorderStudio";
 import { generateTutorial, type GenerateResult } from "@/lib/tutorial.functions";
 import { MY_LOVABLE_PROJECTS } from "@/lib/my-projects";
+import { VOICE_PRESETS } from "@/lib/voices";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -23,7 +24,6 @@ export const Route = createFileRoute("/")({
 
 type Level = "quick" | "medium" | "full";
 type Quality = "720" | "1080" | "1440";
-type Voice = "female" | "male";
 type Effect = "none" | "zoom" | "fade";
 
 function pagesToLevel(n: number): Level {
@@ -39,9 +39,12 @@ function Index() {
   const [pages, setPages] = useState<number>(20);
   const [quality, setQuality] = useState<Quality>("1080");
   const [language, setLanguage] = useState("ar");
-  const [voice, setVoice] = useState<Voice>("female");
+  const [voiceId, setVoiceId] = useState<string>(VOICE_PRESETS[0].id);
+  const [pitch, setPitch] = useState<number>(0);
+  const [speed, setSpeed] = useState<number>(1);
   const [effect, setEffect] = useState<Effect>("none");
   const [secondsPerPage, setSecondsPerPage] = useState(8);
+  const voicePreset = VOICE_PRESETS.find((v) => v.id === voiceId) ?? VOICE_PRESETS[0];
 
   const [stage, setStage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -73,7 +76,7 @@ function Index() {
     } finally {
       setLoading(false);
     }
-    void voice; void quality; // forwarded for future use
+    void quality; // forwarded for future use
   };
 
   return (
@@ -100,7 +103,8 @@ function Index() {
           </p>
         </header>
 
-        {/* Form */}
+        {/* Form — hidden once generation completes */}
+        {!result && (
         <Card className="border-border/60 bg-card/70 backdrop-blur-xl shadow-xl">
           <CardContent className="p-4 sm:p-6">
             <form onSubmit={onSubmit} className="grid gap-4 md:grid-cols-3">
@@ -152,11 +156,23 @@ function Index() {
                 </select>
               </Field>
 
-              <Field icon={<Mic className="h-4 w-4" />} label="نوع الصوت">
-                <select className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 text-sm" value={voice} onChange={(e) => setVoice(e.target.value as Voice)}>
-                  <option value="female">أنثوي</option>
-                  <option value="male">ذكوري</option>
+              <Field icon={<Mic className="h-4 w-4" />} label="الصوت (20 خياراً)">
+                <select className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 text-sm" value={voiceId} onChange={(e) => {
+                  const v = VOICE_PRESETS.find((x) => x.id === e.target.value);
+                  if (v) { setVoiceId(v.id); setPitch(v.pitch); setSpeed(v.speed); setLanguage(v.lang.split("-")[0]); }
+                }}>
+                  {VOICE_PRESETS.map((v) => (
+                    <option key={v.id} value={v.id}>{v.name}</option>
+                  ))}
                 </select>
+              </Field>
+
+              <Field icon={<Music2 className="h-4 w-4" />} label={`الرنين / Pitch (${pitch > 0 ? "+" : ""}${pitch})`}>
+                <input type="range" min={-12} max={12} step={1} value={pitch} onChange={(e) => setPitch(Number(e.target.value))} className="w-full accent-[oklch(0.68_0.21_295)]" />
+              </Field>
+
+              <Field icon={<Gauge className="h-4 w-4" />} label={`سرعة النطق (${speed.toFixed(2)}x)`}>
+                <input type="range" min={0.7} max={1.4} step={0.05} value={speed} onChange={(e) => setSpeed(Number(e.target.value))} className="w-full accent-[oklch(0.68_0.21_295)]" />
               </Field>
 
               <Field icon={<Palette className="h-4 w-4" />} label="المؤثرات">
@@ -204,6 +220,7 @@ function Index() {
             )}
           </CardContent>
         </Card>
+        )}
 
         {/* Studio */}
         {result && (
@@ -213,19 +230,28 @@ function Index() {
                 <div className="h-9 w-9 rounded-lg btn-glow grid place-items-center">
                   <Film className="h-4 w-4 text-white" />
                 </div>
-                <div>
+                <div className="flex-1">
                   <h2 className="font-semibold text-sm sm:text-base">استوديو التسجيل</h2>
                   <p className="text-xs text-muted-foreground">
-                    {result.scenes.length} صفحة · جودة {quality}p · لغة {language.toUpperCase()}
+                    {result.scenes.length} صفحة · جودة {quality}p · {voicePreset.name}
                   </p>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => { setResult(null); setStage(""); }}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card/60 px-3 py-1.5 text-xs hover:bg-card transition"
+                >
+                  <ArrowRight className="h-3.5 w-3.5" /> رجوع للإعدادات
+                </button>
               </div>
               <RecorderStudio
                 scenes={result.scenes}
-                language={language}
+                language={voicePreset.lang}
                 siteName={siteName}
                 effect={effect}
                 secondsPerPage={secondsPerPage}
+                voicePitch={pitch}
+                voiceSpeed={speed}
               />
             </CardContent>
           </Card>

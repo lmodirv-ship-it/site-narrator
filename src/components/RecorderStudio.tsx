@@ -17,6 +17,8 @@ interface Props {
   siteName: string;
   effect: Effect;
   secondsPerPage: number;
+  voicePitch?: number;  // semitones, applied via detune (cents)
+  voiceSpeed?: number;  // playbackRate multiplier
 }
 
 type LogEntry = {
@@ -30,6 +32,7 @@ type LogEntry = {
 
 export function RecorderStudio({
   scenes, language, siteName, effect, secondsPerPage,
+  voicePitch = 0, voiceSpeed = 1,
 }: Props) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -240,6 +243,8 @@ export function RecorderStudio({
         if (buf) {
           src = audioCtx.createBufferSource();
           src.buffer = buf;
+          try { src.detune.value = voicePitch * 100; } catch { /* unsupported */ }
+          src.playbackRate.value = voiceSpeed;
           src.connect(audioDest);
           src.connect(audioCtx.destination);
           src.start();
@@ -308,7 +313,7 @@ export function RecorderStudio({
       setPreparing(false);
     }
     void effect; // reserved for future visual effects
-  }, [preloadAudio, scenes, language, siteName, animateCursor, secondsPerPage, effect]);
+  }, [preloadAudio, scenes, language, siteName, animateCursor, secondsPerPage, effect, voicePitch, voiceSpeed]);
 
   const stop = useCallback(() => {
     stopFlagRef.current = true;
