@@ -81,6 +81,17 @@ export function RecorderStudio({
     return () => clearTimeout(t);
   }, []);
 
+  // Auto-download MP4/WebM as soon as it's ready
+  useEffect(() => {
+    if (!downloadUrl) return;
+    const a = document.createElement("a");
+    a.href = downloadUrl;
+    a.download = downloadName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }, [downloadUrl, downloadName]);
+
   const setLogStatus = (idx: number, status: LogEntry["status"]) => {
     setLogs((prev) => prev.map((l) => (l.idx === idx ? { ...l, status } : l)));
   };
