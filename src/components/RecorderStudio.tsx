@@ -32,6 +32,7 @@ type LogEntry = {
 
 export function RecorderStudio({
   scenes, language, siteName, effect, secondsPerPage,
+  voicePitch = 0, voiceSpeed = 1,
 }: Props) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
