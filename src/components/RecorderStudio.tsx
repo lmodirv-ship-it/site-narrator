@@ -739,7 +739,7 @@ export function RecorderStudio({
       drawingRef.current = false;
       setPlaying(false);
     }
-  }, [preloadAudio, scenes, animateCursor, secondsPerPage, voicePitch, voiceSpeed, startFromIndex, onSceneChange, siteName, finalizeDownloadFromChunks]);
+  }, [preloadAudio, scenes, animateCursor, secondsPerPage, voicePitch, voiceSpeed, voicePreset, startFromIndex, onSceneChange, siteName, finalizeDownloadFromChunks, setLastUrl]);
 
 
   // Auto-start playback on mount (no screen-share prompt)
