@@ -380,11 +380,13 @@ export function RecorderStudio({
         await ffmpeg.writeFile("in.webm", await fetchFile(webmBlob));
         await ffmpeg.exec([
           "-i", "in.webm",
+          "-vf", `scale=-2:${resolutionRef.current}`,
           "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
           "-c:a", "aac", "-b:a", "192k",
           "-movflags", "+faststart",
           "out.mp4",
         ]);
+
         const out = (await ffmpeg.readFile("out.mp4")) as Uint8Array;
         const ab = out.buffer.slice(out.byteOffset, out.byteOffset + out.byteLength) as ArrayBuffer;
         const mp4Blob = new Blob([ab], { type: "video/mp4" });
