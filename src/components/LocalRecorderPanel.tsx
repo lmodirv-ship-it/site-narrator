@@ -176,16 +176,21 @@ export function LocalRecorderPanel({ url, siteName }: Props) {
   );
 }
 
-function statusLabel(s: LocalJob["status"]): string {
+function statusLabel(s: string): string {
   switch (s) {
     case "starting": return "بدء التشغيل…";
+    case "tts": return "توليد الصوت (ElevenLabs)…";
     case "recording": return "يسجّل";
     case "merging": return "يدمج الأجزاء";
     case "done": return "اكتمل ✓";
     case "stopped": return "أوقف يدوياً";
     case "failed": return "فشل";
+    default:
+      if (s.startsWith("mux-")) return `دمج صوت + فيديو (${s.slice(4)})`;
+      return s;
   }
 }
+
 
 function HealthBadge({ health, onRefresh }: { health: { ok: boolean; ffmpeg: boolean } | null | "checking"; onRefresh: () => void }) {
   const label =
