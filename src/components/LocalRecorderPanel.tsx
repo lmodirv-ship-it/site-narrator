@@ -133,13 +133,23 @@ export function LocalRecorderPanel({ url, siteName, scenes }: Props) {
             <input type="number" min={5} max={300} value={segSec} onChange={(e) => setSegSec(Number(e.target.value) || 30)}
               className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm" />
           </label>
-          <label className="space-y-1 text-xs">
-            <span className="font-medium">إجمالي (0 = مفتوح)</span>
-            <input type="number" min={0} value={totalSec} onChange={(e) => setTotalSec(Number(e.target.value) || 0)}
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm" />
+          <label className="flex items-end gap-2 text-xs">
+            <input type="checkbox" checked={burnSubs} onChange={(e) => setBurnSubs(e.target.checked)} className="h-4 w-4" />
+            <span className="font-medium">حرق الترجمة على الفيديو</span>
           </label>
         </div>
       </div>
+
+      <div className="flex flex-wrap items-center gap-3 text-xs">
+        <span className="font-medium">اللغات الناتجة:</span>
+        <label className="inline-flex items-center gap-1.5"><input type="checkbox" checked={langAr} onChange={(e)=>setLangAr(e.target.checked)} /> العربية</label>
+        <label className="inline-flex items-center gap-1.5"><input type="checkbox" checked={langEn} onChange={(e)=>setLangEn(e.target.checked)} /> English</label>
+        <label className="inline-flex items-center gap-1.5"><input type="checkbox" checked={langFr} onChange={(e)=>setLangFr(e.target.checked)} /> Français</label>
+        {scenes && scenes.length > 0 && (
+          <span className="text-muted-foreground">· {scenes.length} مشهد جاهز</span>
+        )}
+      </div>
+
 
       <div className="flex flex-wrap items-center gap-2">
         {!running ? (
