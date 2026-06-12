@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const InputSchema = z.object({
   text: z.string().min(1).max(8000),
@@ -53,6 +54,7 @@ async function fetchGoogleTtsChunk(text: string, lang: string): Promise<Uint8Arr
 }
 
 export const synthesizeSpeech = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(InputSchema)
   .handler(async ({ data }) => {
     const lang = (data.lang ?? "ar").slice(0, 5);
