@@ -70,7 +70,12 @@ function Index() {
   } | null>("hn:pendingJob", null);
   const [resumedBanner, setResumedBanner] = useState(false);
   const [previewing, setPreviewing] = useState(false);
+  const [multiScenes, setMultiScenes] = usePersistentState<
+    Array<{ url: string; narration: Record<string, string>; durationSec?: number }>
+  >("hn:multiScenes", []);
+  const [translating, setTranslating] = useState(false);
   const previewRef = useRef<{ ctx: AudioContext; src: AudioBufferSourceNode } | null>(null);
+
 
   const stopPreview = () => {
     try { previewRef.current?.src.stop(); } catch { /* noop */ }
