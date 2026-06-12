@@ -186,4 +186,7 @@ app.get("/jobs/:id/events", (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`[hn-maker] local recorder server on http://localhost:${PORT}`);
+  console.log(`[hn-maker] auth token: ${TOKEN}`);
+  console.log(`[hn-maker] allowed work root: ${ALLOWED_WORK_ROOT}`);
+  console.log(`[hn-maker] allowed origins: ${ALLOWED_ORIGINS.join(", ")}`);
 });
