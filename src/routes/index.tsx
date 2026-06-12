@@ -16,8 +16,10 @@ import { GenerationOverlay } from "@/components/GenerationOverlay";
 
 import { generateTutorial, type GenerateResult } from "@/lib/tutorial.functions";
 import { synthesizeSpeech } from "@/lib/tts.functions";
+import { translateNarration } from "@/lib/translate.functions";
 import { MY_LOVABLE_PROJECTS } from "@/lib/my-projects";
 import { VOICE_PRESETS } from "@/lib/voices";
+
 
 
 
@@ -44,7 +46,9 @@ function pagesToLevel(n: number): Level {
 function Index() {
   const generate = useServerFn(generateTutorial);
   const ttsSynth = useServerFn(synthesizeSpeech);
+  const translateFn = useServerFn(translateNarration);
   const [url, setUrl] = usePersistentState("hn:url", "https://lovable.dev");
+
   const [siteName, setSiteName] = usePersistentState("hn:siteName", "Lovable");
   const [pages, setPages] = usePersistentState<number>("hn:pages", 20);
   const [quality, setQuality] = usePersistentState<Quality>("hn:quality", "1080");
