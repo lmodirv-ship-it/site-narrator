@@ -174,7 +174,7 @@ app.get("/jobs/:id/events", (req, res) => {
     "Content-Type": "text/event-stream",
     "Cache-Control": "no-cache",
     Connection: "keep-alive",
-    "Access-Control-Allow-Origin": "*",
+    
   });
   res.flushHeaders?.();
   res.write(`data: ${JSON.stringify({ type: "snapshot", job })}\n\n`);
