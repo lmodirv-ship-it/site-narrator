@@ -165,6 +165,47 @@ function Index() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Whenever we have a generated result, translate narrations to ar/en/fr in parallel.
+  useEffect(() => {
+    if (!result?.scenes?.length) { setMultiScenes([]); return; }
+    let cancelled = false;
+    (async () => {
+      setTranslating(true);
+      try {
+        const src = (language === "ar" || language === "en" || language === "fr") ? language : "ar";
+        const payload = result.scenes.map((s) => ({
+          url: s.pageUrl,
+          narration: s.narration?.trim() || s.pageTitle || s.pageUrl,
+        }));
+        const r = await translateFn({
+          data: { scenes: payload, sourceLanguage: src, targetLanguages: ["ar", "en", "fr"] },
+        });
+        if (cancelled) return;
+        setMultiScenes(
+          r.scenes.map((s, i) => ({
+            url: s.url,
+            narration: s.narration,
+            durationSec: Math.max(6, (result.scenes[i].narration?.split(/\s+/).length ?? 20) * 0.42),
+          })),
+        );
+      } catch (e) {
+        console.error("translate failed", e);
+        // fall back: single-language scenes
+        if (!cancelled) {
+          const src = language || "ar";
+          setMultiScenes(result.scenes.map((s) => ({
+            url: s.pageUrl,
+            narration: { [src]: s.narration || s.pageTitle || s.pageUrl },
+          })));
+        }
+      } finally {
+        if (!cancelled) setTranslating(false);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [result, language]);
+
   const resetSession = () => {
     clearResult();
     clearResumeFrom();
@@ -173,7 +214,9 @@ function Index() {
     setResumeFrom(0);
     setStage("");
     setResumedBanner(false);
+    setMultiScenes([]);
   };
+
 
 
   return (
