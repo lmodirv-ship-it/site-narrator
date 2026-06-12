@@ -39,29 +39,38 @@ export const LOCAL_SERVER_URL =
 
 export type LocalJob = {
   id: string;
-  status: "starting" | "recording" | "merging" | "done" | "failed" | "stopped";
+  status: "starting" | "tts" | "recording" | "merging" | "done" | "failed" | "stopped" | string;
   segments: string[];
   finalPath?: string | null;
   infoPath?: string | null;
+  outputs?: Array<{ lang: string; mp4: string; srt: string }>;
   error?: string | null;
   startedAt?: number;
   finishedAt?: number | null;
 };
 
+export type ScenePlan = {
+  url: string;
+  narration: Record<string, string>; // { ar: "...", en: "...", fr: "..." }
+  durationSec?: number;
+};
+
 export type LocalEvent =
   | { type: "snapshot"; job: LocalJob }
-  | { type: "status"; status: LocalJob["status"] }
+  | { type: "status"; status: string }
   | { type: "navigate"; url: string }
+  | { type: "scene"; index: number; total: number; url: string; durSec: number }
+  | { type: "tts"; lang: string; scene: number; total: number; durSec: number }
   | { type: "progress"; elapsedSec: number; segments: string[] }
   | { type: "ffmpeg"; line: string }
-  | { type: "done"; finalPath: string; infoPath: string; segments: string[] }
+  | { type: "done"; finalPath: string; infoPath: string; outputs?: LocalJob["outputs"]; segments: string[] }
   | { type: "error"; message: string };
 
-export async function checkLocalServer(): Promise<{ ok: boolean; ffmpeg: boolean } | null> {
+export async function checkLocalServer(): Promise<{ ok: boolean; ffmpeg: boolean; elevenlabs?: boolean } | null> {
   try {
     const res = await fetch(`${LOCAL_SERVER_URL}/health`, { method: "GET" });
     if (!res.ok) return null;
-    return (await res.json()) as { ok: boolean; ffmpeg: boolean };
+    return (await res.json()) as { ok: boolean; ffmpeg: boolean; elevenlabs?: boolean };
   } catch {
     return null;
   }
@@ -74,7 +83,11 @@ export async function startLocalJob(input: {
   secondsPerSegment?: number;
   totalSeconds?: number;
   viewport?: { width: number; height: number };
+  scenes?: ScenePlan[];
+  languages?: string[];
+  burnSubtitles?: boolean;
 }): Promise<{ id: string }> {
+
   const res = await fetch(`${LOCAL_SERVER_URL}/jobs`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

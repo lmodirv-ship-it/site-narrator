@@ -38,7 +38,12 @@ app.get("/health", async (_req, res) => {
     p.on("error", () => resolve(false));
     p.on("exit", (code) => resolve(code === 0));
   });
-  res.json({ ok: true, ffmpeg: ffmpegOk, jobs: jobs.size });
+  res.json({
+    ok: true,
+    ffmpeg: ffmpegOk,
+    elevenlabs: !!process.env.ELEVENLABS_API_KEY,
+    jobs: jobs.size,
+  });
 });
 
 app.post("/jobs", async (req, res) => {
@@ -46,9 +51,12 @@ app.post("/jobs", async (req, res) => {
     url,
     workDir,
     secondsPerSegment = 30,
-    totalSeconds = 0, // 0 = open-ended, stopped via /stop
+    totalSeconds = 0,
     viewport = { width: 1920, height: 1080 },
     siteName = "site",
+    scenes = [],
+    languages = ["ar"],
+    burnSubtitles = false,
   } = req.body || {};
 
   if (!url || !workDir) {
@@ -67,6 +75,9 @@ app.post("/jobs", async (req, res) => {
     secondsPerSegment,
     totalSeconds,
     viewport,
+    scenes,
+    languages,
+    burnSubtitles,
     status: "starting",
     segments: [],
     startedAt: Date.now(),
@@ -88,6 +99,7 @@ app.post("/jobs", async (req, res) => {
 
   res.json({ id, status: job.status });
 });
+
 
 app.get("/jobs/:id", (req, res) => {
   const job = jobs.get(req.params.id);

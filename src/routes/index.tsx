@@ -16,8 +16,10 @@ import { GenerationOverlay } from "@/components/GenerationOverlay";
 
 import { generateTutorial, type GenerateResult } from "@/lib/tutorial.functions";
 import { synthesizeSpeech } from "@/lib/tts.functions";
+import { translateNarration } from "@/lib/translate.functions";
 import { MY_LOVABLE_PROJECTS } from "@/lib/my-projects";
 import { VOICE_PRESETS } from "@/lib/voices";
+
 
 
 
@@ -44,7 +46,9 @@ function pagesToLevel(n: number): Level {
 function Index() {
   const generate = useServerFn(generateTutorial);
   const ttsSynth = useServerFn(synthesizeSpeech);
+  const translateFn = useServerFn(translateNarration);
   const [url, setUrl] = usePersistentState("hn:url", "https://lovable.dev");
+
   const [siteName, setSiteName] = usePersistentState("hn:siteName", "Lovable");
   const [pages, setPages] = usePersistentState<number>("hn:pages", 20);
   const [quality, setQuality] = usePersistentState<Quality>("hn:quality", "1080");
@@ -66,7 +70,12 @@ function Index() {
   } | null>("hn:pendingJob", null);
   const [resumedBanner, setResumedBanner] = useState(false);
   const [previewing, setPreviewing] = useState(false);
+  const [multiScenes, setMultiScenes] = usePersistentState<
+    Array<{ url: string; narration: Record<string, string>; durationSec?: number }>
+  >("hn:multiScenes", []);
+  const [translating, setTranslating] = useState(false);
   const previewRef = useRef<{ ctx: AudioContext; src: AudioBufferSourceNode } | null>(null);
+
 
   const stopPreview = () => {
     try { previewRef.current?.src.stop(); } catch { /* noop */ }
@@ -156,6 +165,47 @@ function Index() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Whenever we have a generated result, translate narrations to ar/en/fr in parallel.
+  useEffect(() => {
+    if (!result?.scenes?.length) { setMultiScenes([]); return; }
+    let cancelled = false;
+    (async () => {
+      setTranslating(true);
+      try {
+        const src = (language === "ar" || language === "en" || language === "fr") ? language : "ar";
+        const payload = result.scenes.map((s) => ({
+          url: s.pageUrl,
+          narration: s.narration?.trim() || s.pageTitle || s.pageUrl,
+        }));
+        const r = await translateFn({
+          data: { scenes: payload, sourceLanguage: src, targetLanguages: ["ar", "en", "fr"] },
+        });
+        if (cancelled) return;
+        setMultiScenes(
+          r.scenes.map((s, i) => ({
+            url: s.url,
+            narration: s.narration,
+            durationSec: Math.max(6, (result.scenes[i].narration?.split(/\s+/).length ?? 20) * 0.42),
+          })),
+        );
+      } catch (e) {
+        console.error("translate failed", e);
+        // fall back: single-language scenes
+        if (!cancelled) {
+          const src = language || "ar";
+          setMultiScenes(result.scenes.map((s) => ({
+            url: s.pageUrl,
+            narration: { [src]: s.narration || s.pageTitle || s.pageUrl },
+          })));
+        }
+      } finally {
+        if (!cancelled) setTranslating(false);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [result, language]);
+
   const resetSession = () => {
     clearResult();
     clearResumeFrom();
@@ -164,7 +214,9 @@ function Index() {
     setResumeFrom(0);
     setStage("");
     setResumedBanner(false);
+    setMultiScenes([]);
   };
+
 
 
   return (
@@ -354,6 +406,8 @@ function Index() {
                   <h2 className="font-semibold text-sm sm:text-base">استوديو التسجيل</h2>
                   <p className="text-xs text-muted-foreground">
                     {result.scenes.length} صفحة · جودة {quality}p · {voicePreset.name}
+                    {translating && " · جارٍ ترجمة السرد إلى ar/en/fr…"}
+                    {!translating && multiScenes.length > 0 && ` · ✓ سرد بـ ${Object.keys(multiScenes[0].narration).length} لغات`}
                   </p>
                 </div>
                 <button
@@ -364,7 +418,8 @@ function Index() {
                   <ArrowRight className="h-3.5 w-3.5" /> رجوع للإعدادات
                 </button>
               </div>
-              <LocalRecorderPanel url={url} siteName={siteName} />
+              <LocalRecorderPanel url={url} siteName={siteName} scenes={multiScenes} />
+
               <RecorderStudio
                 scenes={result.scenes}
                 language={voicePreset.lang}
