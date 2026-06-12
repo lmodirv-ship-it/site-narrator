@@ -10,20 +10,21 @@ import { LocalServerSetupCard } from "./LocalServerSetupCard";
 interface Props {
   url: string;
   siteName: string;
+  scenes?: Array<{ url: string; narration: Record<string, string>; durationSec?: number }>;
 }
 
 /**
- * Control panel for the local Playwright + FFmpeg recorder.
- * The server lives in `local-server/` and runs on http://localhost:5174.
- * This panel: shows server health, lets the user pick a workDir (absolute
- * path string — the browser cannot send a FileSystemHandle to a separate
- * server), starts a job, and streams progress via SSE.
+ * Control panel for the local Playwright + FFmpeg + ElevenLabs recorder.
+ * Sends a "scene plan" (pages + narration per language) and streams progress.
  */
-export function LocalRecorderPanel({ url, siteName }: Props) {
+export function LocalRecorderPanel({ url, siteName, scenes }: Props) {
   const [workDir, setWorkDir] = usePersistentState<string>("hn:workDir", "");
   const [segSec, setSegSec] = usePersistentState<number>("hn:segSec", 30);
-  const [totalSec, setTotalSec] = usePersistentState<number>("hn:totalSec", 0);
-  const [health, setHealth] = useState<{ ok: boolean; ffmpeg: boolean } | null | "checking">("checking");
+  const [langAr, setLangAr] = usePersistentState<boolean>("hn:lang:ar", true);
+  const [langEn, setLangEn] = usePersistentState<boolean>("hn:lang:en", true);
+  const [langFr, setLangFr] = usePersistentState<boolean>("hn:lang:fr", true);
+  const [burnSubs, setBurnSubs] = usePersistentState<boolean>("hn:burnSubs", false);
+  const [health, setHealth] = useState<{ ok: boolean; ffmpeg: boolean; elevenlabs?: boolean } | null | "checking">("checking");
   const [job, setJob] = useState<LocalJob | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -38,14 +39,24 @@ export function LocalRecorderPanel({ url, siteName }: Props) {
   useEffect(() => { void refreshHealth(); }, [refreshHealth]);
   useEffect(() => () => { unsubRef.current?.(); }, []);
 
+  const languages = [
+    langAr ? "ar" : null,
+    langEn ? "en" : null,
+    langFr ? "fr" : null,
+  ].filter(Boolean) as string[];
+
   const start = useCallback(async () => {
     setError(null);
     if (!workDir.trim()) { setError("اكتب مسار مجلد العمل أولاً"); return; }
+    if (languages.length === 0) { setError("اختر لغة واحدة على الأقل"); return; }
     setBusy(true);
     try {
       const { id } = await startLocalJob({
         url, workDir: workDir.trim(), siteName,
-        secondsPerSegment: segSec, totalSeconds: totalSec,
+        secondsPerSegment: segSec,
+        scenes: scenes && scenes.length ? scenes : undefined,
+        languages,
+        burnSubtitles: burnSubs,
       });
       setJob({ id, status: "starting", segments: [] });
       unsubRef.current?.();
@@ -55,8 +66,12 @@ export function LocalRecorderPanel({ url, siteName }: Props) {
         else if (ev.type === "progress") {
           setElapsed(ev.elapsedSec);
           setJob((j) => j ? { ...j, segments: ev.segments } : j);
+        } else if (ev.type === "scene") {
+          setJob((j) => j ? { ...j, status: `scene ${ev.index}/${ev.total}` } : j);
+        } else if (ev.type === "tts") {
+          setJob((j) => j ? { ...j, status: `صوت ${ev.lang} (${ev.scene}/${ev.total})` } : j);
         } else if (ev.type === "done") {
-          setJob((j) => j ? { ...j, status: "done", finalPath: ev.finalPath, infoPath: ev.infoPath, segments: ev.segments } : j);
+          setJob((j) => j ? { ...j, status: "done", finalPath: ev.finalPath, infoPath: ev.infoPath, outputs: ev.outputs, segments: ev.segments } : j);
         } else if (ev.type === "error") {
           setError(ev.message);
         }
@@ -66,14 +81,15 @@ export function LocalRecorderPanel({ url, siteName }: Props) {
     } finally {
       setBusy(false);
     }
-  }, [url, siteName, workDir, segSec, totalSec]);
+  }, [url, siteName, workDir, segSec, scenes, languages, burnSubs]);
 
   const stop = useCallback(async () => {
     if (job?.id) await stopLocalJob(job.id);
   }, [job?.id]);
 
-  const canStart = !!workDir.trim() && (health && health !== "checking" && health.ok);
-  const running = job && (job.status === "starting" || job.status === "recording" || job.status === "merging");
+  const canStart = !!workDir.trim() && (health && health !== "checking" && health.ok) && languages.length > 0;
+  const running = job && job.status !== "done" && job.status !== "failed" && job.status !== "stopped";
+
 
   const electron = isElectronApp();
   const offline = health !== "checking" && !health?.ok;
