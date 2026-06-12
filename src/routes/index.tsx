@@ -406,6 +406,8 @@ function Index() {
                   <h2 className="font-semibold text-sm sm:text-base">استوديو التسجيل</h2>
                   <p className="text-xs text-muted-foreground">
                     {result.scenes.length} صفحة · جودة {quality}p · {voicePreset.name}
+                    {translating && " · جارٍ ترجمة السرد إلى ar/en/fr…"}
+                    {!translating && multiScenes.length > 0 && ` · ✓ سرد بـ ${Object.keys(multiScenes[0].narration).length} لغات`}
                   </p>
                 </div>
                 <button
@@ -416,7 +418,8 @@ function Index() {
                   <ArrowRight className="h-3.5 w-3.5" /> رجوع للإعدادات
                 </button>
               </div>
-              <LocalRecorderPanel url={url} siteName={siteName} />
+              <LocalRecorderPanel url={url} siteName={siteName} scenes={multiScenes} />
+
               <RecorderStudio
                 scenes={result.scenes}
                 language={voicePreset.lang}
