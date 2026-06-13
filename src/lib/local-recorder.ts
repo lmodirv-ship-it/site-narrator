@@ -101,6 +101,29 @@ export async function stopLocalJob(id: string): Promise<void> {
   await fetch(`${LOCAL_SERVER_URL}/jobs/${id}/stop`, { method: "POST" });
 }
 
+export type ScenePageInput = {
+  url: string;
+  title?: string;
+  summary?: string;
+  content?: string;
+};
+
+export async function generateScenesLocal(input: {
+  pages: ScenePageInput[];
+  siteName?: string;
+  baseLang?: string;
+  languages?: string[];
+  targetSec?: number;
+}): Promise<{ scenes: ScenePlan[] }> {
+  const res = await fetch(`${LOCAL_SERVER_URL}/scripts/generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) throw new Error(`Local server error ${res.status}: ${await res.text()}`);
+  return res.json();
+}
+
 export function subscribeLocalJob(id: string, onEvent: (ev: LocalEvent) => void): () => void {
   const es = new EventSource(`${LOCAL_SERVER_URL}/jobs/${id}/events`);
   es.onmessage = (e) => {
