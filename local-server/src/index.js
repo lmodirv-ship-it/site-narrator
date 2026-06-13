@@ -14,6 +14,7 @@ import path from "node:path";
 import os from "node:os";
 import { spawn } from "node:child_process";
 import { runJob } from "./recorder.js";
+import { generateScenes } from "./scripts.js";
 
 const PORT = Number(process.env.PORT) || 5174;
 
@@ -91,8 +92,27 @@ app.get("/health", async (_req, res) => {
     ok: true,
     ffmpeg: ffmpegOk,
     elevenlabs: !!process.env.ELEVENLABS_API_KEY,
+    gemini: !!process.env.GEMINI_API_KEY,
     jobs: jobs.size,
   });
+});
+
+// Generate multi-language scene scripts from a list of pages.
+// Body: { pages: [{url,title?,summary?,content?}], siteName?, baseLang?, languages?, targetSec? }
+app.post("/scripts/generate", async (req, res) => {
+  try {
+    const { pages, siteName, baseLang = "en", languages = ["ar", "en", "fr"], targetSec = 12 } = req.body || {};
+    if (!Array.isArray(pages) || pages.length === 0) {
+      return res.status(400).json({ error: "pages[] is required" });
+    }
+    if (pages.length > 30) {
+      return res.status(400).json({ error: "too many pages (max 30)" });
+    }
+    const scenes = await generateScenes(pages, { siteName, baseLang, languages, targetSec });
+    res.json({ scenes });
+  } catch (err) {
+    res.status(500).json({ error: String(err?.message ?? err) });
+  }
 });
 
 app.post("/jobs", async (req, res) => {
