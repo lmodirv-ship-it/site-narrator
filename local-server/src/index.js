@@ -14,6 +14,7 @@ import path from "node:path";
 import os from "node:os";
 import { spawn } from "node:child_process";
 import { runJob } from "./recorder.js";
+import { generateScenes } from "./scripts.js";
 
 const PORT = Number(process.env.PORT) || 5174;
 
