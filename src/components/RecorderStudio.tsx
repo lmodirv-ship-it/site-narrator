@@ -379,11 +379,24 @@ export function RecorderStudio({
     setSnapshotSaving(true);
     const webmBlob = new Blob(chunks, { type: recMimeRef.current });
     const baseName = `${siteName}-tutorial`;
-    // Try MP4 conversion; fall back to WebM if it fails.
+
+    // 1) IMMEDIATELY save the WebM to the chosen folder + activate the
+    //    download button so the user has a usable file the instant recording
+    //    finishes — no need to wait for the MP4 conversion to complete.
+    const webmName = `${baseName}.webm`;
+    const webmSaved = await saveToFolder(webmBlob, webmName);
+    if (downloadUrl) URL.revokeObjectURL(downloadUrl);
+    const webmUrl = URL.createObjectURL(webmBlob);
+    setDownloadUrl(webmUrl);
+    setDownloadName(webmName);
+    setPhase(`${label} — ${webmSaved ? "تم الحفظ في المجلد" : "جاهز للتحميل"} ✓ WebM (يجري تحويله إلى MP4…)`);
+
+    // 2) Try MP4 conversion; replace the download with MP4 when ready.
     const convStarted = Date.now();
     setConvStartAt(convStarted);
     setConvElapsedMs(0);
     setConvProgress(0);
+
     try {
       const { FFmpeg } = await import("@ffmpeg/ffmpeg");
       const { fetchFile, toBlobURL } = await import("@ffmpeg/util");
@@ -452,19 +465,11 @@ export function RecorderStudio({
       setPhase(`${label} — ${saved ? "تم حفظ نسخة في المجلد" : "جاهز للتحميل"} ✓ MP4`);
     } catch (e) {
       console.error("ffmpeg failed", e);
-      const name = `${baseName}.webm`;
-      const saved = await saveToFolder(webmBlob, name);
-      if (downloadUrl) URL.revokeObjectURL(downloadUrl);
-      const url = URL.createObjectURL(webmBlob);
-      setDownloadUrl(url);
-      setDownloadName(name);
-      if (autoDownload) {
-        const a = document.createElement("a");
-        a.href = url; a.download = name;
-        document.body.appendChild(a); a.click(); a.remove();
-      }
-      setConvPhase("فشل التحويل — تم حفظ WebM بدلاً من MP4");
-      setPhase(`${label} — ${saved ? "تم حفظ نسخة في المجلد" : "جاهز للتحميل"} ✓ WebM`);
+      // WebM was already saved + download button activated at the top of this
+      // function, so just inform the user MP4 conversion failed.
+      setConvPhase("فشل التحويل — يبقى WebM متاحاً للتحميل");
+      setPhase(`${label} — ${webmSaved ? "محفوظ في المجلد" : "جاهز للتحميل"} ✓ WebM`);
+
     } finally {
       setConvStartAt(null);
       snapshotSavingRef.current = false;
