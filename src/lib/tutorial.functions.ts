@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+
 
 const LevelEnum = z.enum(["quick", "medium", "full"]);
 
@@ -166,7 +166,6 @@ async function pMapBatched<T, R>(
 }
 
 export const generateTutorial = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
   .inputValidator(InputSchema)
   .handler(async ({ data }): Promise<GenerateResult> => {
     const firecrawlKey = process.env.FIRECRAWL_API_KEY;

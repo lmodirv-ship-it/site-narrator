@@ -2,7 +2,7 @@
 // Used to produce ar/en/fr tracks from a single source script.
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+
 
 const InputSchema = z.object({
   scenes: z.array(z.object({
@@ -20,7 +20,6 @@ const LANG_NAME: Record<string, string> = {
 };
 
 export const translateNarration = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => InputSchema.parse(d))
   .handler(async ({ data }) => {
     const apiKey = process.env.LOVABLE_API_KEY;
