@@ -12,7 +12,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { RecorderStudio } from "@/components/RecorderStudio";
 import { LocalRecorderPanel } from "@/components/LocalRecorderPanel";
 import { Particles } from "@/components/Particles";
-import { GenerationOverlay } from "@/components/GenerationOverlay";
+
 
 import { generateTutorial, type GenerateResult } from "@/lib/tutorial.functions";
 import { synthesizeSpeech } from "@/lib/tts.functions";
