@@ -465,19 +465,11 @@ export function RecorderStudio({
       setPhase(`${label} — ${saved ? "تم حفظ نسخة في المجلد" : "جاهز للتحميل"} ✓ MP4`);
     } catch (e) {
       console.error("ffmpeg failed", e);
-      const name = `${baseName}.webm`;
-      const saved = await saveToFolder(webmBlob, name);
-      if (downloadUrl) URL.revokeObjectURL(downloadUrl);
-      const url = URL.createObjectURL(webmBlob);
-      setDownloadUrl(url);
-      setDownloadName(name);
-      if (autoDownload) {
-        const a = document.createElement("a");
-        a.href = url; a.download = name;
-        document.body.appendChild(a); a.click(); a.remove();
-      }
-      setConvPhase("فشل التحويل — تم حفظ WebM بدلاً من MP4");
-      setPhase(`${label} — ${saved ? "تم حفظ نسخة في المجلد" : "جاهز للتحميل"} ✓ WebM`);
+      // WebM was already saved + download button activated at the top of this
+      // function, so just inform the user MP4 conversion failed.
+      setConvPhase("فشل التحويل — يبقى WebM متاحاً للتحميل");
+      setPhase(`${label} — ${webmSaved ? "محفوظ في المجلد" : "جاهز للتحميل"} ✓ WebM`);
+
     } finally {
       setConvStartAt(null);
       snapshotSavingRef.current = false;
